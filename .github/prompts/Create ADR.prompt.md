@@ -96,8 +96,8 @@ Create a new ADR in `docs/development/adr/NNNN-title-of-decision.md`:
 
 **Files affected:**
 
-- `custom_components/ha_integration_domain/[file1.py]`
-- `custom_components/ha_integration_domain/[file2.py]`
+- `custom_components/smart_venetian_blinds/[file1.py]`
+- `custom_components/smart_venetian_blinds/[file2.py]`
 
 **Code pattern to follow:**
 
@@ -216,8 +216,8 @@ Create a new ADR in `docs/development/adr/NNNN-title-of-decision.md`:
 
 ## Integration Context
 
-- **Domain:** `ha_integration_domain`
-- **Class prefix:** `IntegrationBlueprint`
+- **Domain:** `smart_venetian_blinds`
+- **Class prefix:** `SmartVenetianBlinds`
 - **Architecture docs:** `docs/development/ARCHITECTURE.md`
 - **Decisions log:** `docs/development/DECISIONS.md`
 
