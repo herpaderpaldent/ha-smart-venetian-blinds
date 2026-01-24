@@ -1,125 +1,197 @@
 """
-Core DataUpdateCoordinator implementation for smart_venetian_blinds.
+Event-driven coordinator for smart_venetian_blinds.
 
-This module contains the main coordinator class that manages data fetching
-and updates for all entities in the integration. It handles refresh cycles,
-error handling, and triggers reauthentication when needed.
-
-For more information on coordinators:
-https://developers.home-assistant.io/docs/integration_fetching_data#coordinated-single-api-poll-for-data-for-all-entities
+This coordinator manages sun position tracking and slat angle calculations
+for a window group. Instead of polling, it listens for sun entity state changes.
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from custom_components.smart_venetian_blinds.api import (
-    SmartVenetianBlindsApiClientAuthenticationError,
-    SmartVenetianBlindsApiClientError,
+from custom_components.smart_venetian_blinds.const import (
+    CONF_CHANGE_THRESHOLD,
+    CONF_FACADE_AZIMUTH,
+    CONF_MIN_UPDATE_INTERVAL,
+    CONF_SLAT_SPACING,
+    CONF_SLAT_WIDTH,
+    DEFAULT_CHANGE_THRESHOLD,
+    DEFAULT_MIN_UPDATE_INTERVAL,
+    LOGGER,
 )
-from custom_components.smart_venetian_blinds.const import LOGGER
-from homeassistant.exceptions import ConfigEntryAuthFailed
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from custom_components.smart_venetian_blinds.sun import SlatCalculationResult, calculate_slat_angle
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 if TYPE_CHECKING:
     from custom_components.smart_venetian_blinds.data import SmartVenetianBlindsConfigEntry
+    from custom_components.smart_venetian_blinds.sun import SunDataProvider
+    from homeassistant.core import HomeAssistant
 
 
-class SmartVenetianBlindsDataUpdateCoordinator(DataUpdateCoordinator):
+class SmartVenetianBlindsDataUpdateCoordinator(DataUpdateCoordinator[SlatCalculationResult | None]):
     """
-    Class to manage fetching data from the API.
+    Event-driven coordinator for slat angle calculations.
 
-    This coordinator handles all data fetching for the integration and distributes
-    updates to all entities. It manages:
-    - Periodic data updates based on update_interval
-    - Error handling and recovery
-    - Authentication failure detection and reauthentication triggers
-    - Data distribution to all entities
-    - Context-based data fetching (only fetch data for active entities)
+    This coordinator:
+    - Listens for sun position changes via state listeners
+    - Calculates optimal slat angles based on group configuration
+    - Throttles updates based on configured thresholds
+    - Notifies entities when calculation results change
 
-    For more information:
-    https://developers.home-assistant.io/docs/integration_fetching_data#coordinated-single-api-poll-for-data-for-all-entities
-
-    Attributes:
-        config_entry: The config entry for this integration instance.
+    Unlike a typical DataUpdateCoordinator, this one doesn't poll.
+    Updates are triggered by sun entity state changes.
     """
 
     config_entry: SmartVenetianBlindsConfigEntry
 
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        config_entry: SmartVenetianBlindsConfigEntry,
+        sun_provider: SunDataProvider,
+    ) -> None:
+        """
+        Initialize the coordinator.
+
+        Args:
+            hass: The Home Assistant instance.
+            config_entry: The config entry for this window group.
+            sun_provider: Provider for sun position data.
+        """
+        super().__init__(
+            hass,
+            LOGGER,
+            config_entry=config_entry,
+            name=f"smart_venetian_blinds_{config_entry.entry_id}",
+            update_interval=None,  # No polling - event-driven
+        )
+        self._sun_provider = sun_provider
+        self._listener_started = False
+
+    @property
+    def sun_provider(self) -> SunDataProvider:
+        """Get the sun data provider."""
+        return self._sun_provider
+
+    @property
+    def change_threshold(self) -> int:
+        """Get the configured change threshold in degrees."""
+        return self.config_entry.options.get(
+            CONF_CHANGE_THRESHOLD,
+            DEFAULT_CHANGE_THRESHOLD,
+        )
+
+    @property
+    def min_update_interval(self) -> int:
+        """Get the configured minimum update interval in seconds."""
+        return self.config_entry.options.get(
+            CONF_MIN_UPDATE_INTERVAL,
+            DEFAULT_MIN_UPDATE_INTERVAL,
+        )
+
     async def _async_setup(self) -> None:
+        """Set up the coordinator."""
+        LOGGER.debug(
+            "Coordinator setup for group: %s",
+            self.config_entry.title,
+        )
+
+    async def _async_update_data(self) -> SlatCalculationResult | None:
         """
-        Set up the coordinator.
+        Calculate slat angle based on current sun position.
 
-        This method is called automatically during async_config_entry_first_refresh()
-        and is the ideal place for one-time initialization tasks such as:
-        - Loading device information
-        - Setting up event listeners
-        - Initializing caches
-
-        This runs before the first data fetch, ensuring any required setup
-        is complete before entities start requesting data.
-        """
-        # Example: Fetch device info once at startup
-        # device_info = await self.config_entry.runtime_data.client.get_device_info()
-        # self._device_id = device_info["id"]
-        LOGGER.debug("Coordinator setup complete for %s", self.config_entry.entry_id)
-
-    async def _async_update_data(self) -> Any:
-        """
-        Fetch data from API endpoint.
-
-        This is the only method that should be implemented in a DataUpdateCoordinator.
-        It is called automatically based on the update_interval.
-
-        Context-based fetching:
-        The coordinator tracks which entities are currently listening via async_contexts().
-        This allows optimizing API calls to only fetch data that's actually needed.
-        For example, if only sensor entities are enabled, we can skip fetching switch data.
-
-        The API client uses the credentials from config_entry to authenticate:
-        - username: from config_entry.data["username"]
-        - password: from config_entry.data["password"]
-
-        Expected API response structure (example):
-        {
-            "userId": 1,      # Used as device identifier
-            "id": 1,          # Data record ID
-            "title": "...",   # Additional metadata
-            "body": "...",    # Additional content
-            # In production, would include:
-            # "air_quality": {"aqi": 45, "pm25": 12.3},
-            # "filter": {"life_remaining": 75, "runtime_hours": 324},
-            # "settings": {"fan_speed": "medium", "humidity": 55}
-        }
+        This is called when manually refreshing or on initial setup.
+        Event-driven updates also trigger entity updates via async_set_updated_data.
 
         Returns:
-            The data from the API as a dictionary.
-
-        Raises:
-            ConfigEntryAuthFailed: If authentication fails, triggers reauthentication.
-            UpdateFailed: If data fetching fails for other reasons, optionally with retry_after.
+            The calculation result or None if sun is below horizon.
         """
-        try:
-            # Optional: Get active entity contexts to optimize data fetching
-            # listening_contexts = set(self.async_contexts())
-            # LOGGER.debug("Active entity contexts: %s", listening_contexts)
+        return self._calculate_slat_angle()
 
-            # Fetch data from API
-            # In production, you could pass listening_contexts to optimize the API call:
-            # return await self.config_entry.runtime_data.client.async_get_data(listening_contexts)
-            return await self.config_entry.runtime_data.client.async_get_data()
-        except SmartVenetianBlindsApiClientAuthenticationError as exception:
-            LOGGER.warning("Authentication error - %s", exception)
-            raise ConfigEntryAuthFailed(
-                translation_domain="smart_venetian_blinds",
-                translation_key="authentication_failed",
-            ) from exception
-        except SmartVenetianBlindsApiClientError as exception:
-            LOGGER.exception("Error communicating with API")
-            # If the API provides rate limit information, you can honor it:
-            # if hasattr(exception, 'retry_after'):
-            #     raise UpdateFailed(retry_after=exception.retry_after) from exception
-            raise UpdateFailed(
-                translation_domain="smart_venetian_blinds",
-                translation_key="update_failed",
-            ) from exception
+    def _calculate_slat_angle(self) -> SlatCalculationResult | None:
+        """
+        Perform slat angle calculation for this window group.
+
+        Returns:
+            The calculation result or None if sun is below horizon.
+        """
+        sun_position = self._sun_provider.get_sun_position()
+        if sun_position is None:
+            LOGGER.debug("No sun position available")
+            return None
+
+        # Get group configuration
+        facade_azimuth = self.config_entry.data.get(CONF_FACADE_AZIMUTH, 180)
+        slat_width = self.config_entry.data.get(CONF_SLAT_WIDTH, 80)
+        slat_spacing = self.config_entry.data.get(CONF_SLAT_SPACING, 70)
+
+        # Calculate slat angle
+        result = calculate_slat_angle(
+            sun=sun_position,
+            facade_azimuth_deg=facade_azimuth,
+            slat_width_mm=slat_width,
+            slat_spacing_mm=slat_spacing,
+        )
+
+        LOGGER.debug(
+            "Calculated slat angle for %s: %s",
+            self.config_entry.title,
+            result,
+        )
+
+        return result
+
+    def trigger_update(self) -> None:
+        """
+        Trigger an update from sun state change.
+
+        This is called by the SunStateListener when sun position changes.
+        """
+        result = self._calculate_slat_angle()
+
+        # Update the coordinator's data and notify listeners
+        self.async_set_updated_data(result)
+
+    def should_apply_update(self, new_angle: float) -> bool:
+        """
+        Check if update should be applied based on throttling rules.
+
+        Args:
+            new_angle: The newly calculated slat angle.
+
+        Returns:
+            True if the update should be applied.
+        """
+        state = self.config_entry.runtime_data.state
+
+        return state.should_apply(
+            new_angle=new_angle,
+            threshold_deg=self.change_threshold,
+            min_interval_sec=self.min_update_interval,
+        )
+
+    def mark_update_applied(self, angle: float) -> None:
+        """
+        Mark that an update was applied.
+
+        Args:
+            angle: The angle that was applied.
+        """
+        self.config_entry.runtime_data.state.mark_applied(angle)
+
+    def get_group_data(self) -> dict[str, Any]:
+        """
+        Get group configuration data for diagnostics.
+
+        Returns:
+            Dictionary of group configuration.
+        """
+        return {
+            "title": self.config_entry.title,
+            "facade_azimuth": self.config_entry.data.get(CONF_FACADE_AZIMUTH),
+            "slat_width": self.config_entry.data.get(CONF_SLAT_WIDTH),
+            "slat_spacing": self.config_entry.data.get(CONF_SLAT_SPACING),
+            "change_threshold": self.change_threshold,
+            "min_update_interval": self.min_update_interval,
+            "covers_count": len(self.config_entry.subentries),
+        }

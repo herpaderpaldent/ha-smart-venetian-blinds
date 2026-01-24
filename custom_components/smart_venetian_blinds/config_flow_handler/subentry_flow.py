@@ -1,16 +1,9 @@
 """
-Subentry flow template for smart_venetian_blinds.
+Subentry flow for cover configuration.
 
-This module provides a template for implementing subentry flows when needed.
-Subentry flows allow users to add multiple "sub-configurations" under a single
-config entry.
-
-Example use case:
-- Weather integration: Main entry for API credentials, subentries for locations
-- Multi-device integration: Main entry for hub/account, subentries for devices
-
-This file is currently a template/example. Uncomment and adapt when implementing
-subentry support.
+This module implements the subentry flow for adding and modifying
+covers within a window group. Each cover can have its own drive position,
+tilt settings, and behavior configuration.
 
 For more information:
 https://developers.home-assistant.io/docs/config_entries_config_flow_handler#subentry-flows
@@ -18,89 +11,148 @@ https://developers.home-assistant.io/docs/config_entries_config_flow_handler#sub
 
 from __future__ import annotations
 
-# Uncomment when implementing subentry flows:
-#
-# from typing import Any
-#
-# from homeassistant import config_entries
-# from homeassistant.config_entries import ConfigSubentryFlow, SubentryFlowResult
-#
-# class ExampleLocationSubentryFlowHandler(ConfigSubentryFlow):
-#     """
-#     Handle subentry flow for adding and modifying locations.
-#
-#     This is an example implementation. Adapt to your integration's needs.
-#     """
-#
-#     async def async_step_user(
-#         self,
-#         user_input: dict[str, Any] | None = None
-#     ) -> SubentryFlowResult:
-#         """User flow to add a new location."""
-#         if user_input is not None:
-#             # Validate and create subentry
-#             return self.async_create_subentry(
-#                 title=user_input["location_name"],
-#                 data=user_input,
-#             )
-#
-#         # Show form to collect location data
-#         return self.async_show_form(
-#             step_id="user",
-#             data_schema=vol.Schema({
-#                 vol.Required("location_name"): str,
-#                 vol.Required("latitude"): float,
-#                 vol.Required("longitude"): float,
-#             })
-#         )
-#
-#     async def async_step_reconfigure(
-#         self,
-#         user_input: dict[str, Any] | None = None
-#     ) -> SubentryFlowResult:
-#         """User flow to modify an existing location."""
-#         config_entry = self._get_entry()
-#         config_subentry = self._get_reconfigure_subentry()
-#
-#         if user_input is not None:
-#             # Validate and update subentry
-#             return self.async_update_subentry(
-#                 config_subentry,
-#                 data=user_input,
-#             )
-#
-#         # Show form pre-filled with current values
-#         return self.async_show_form(
-#             step_id="reconfigure",
-#             data_schema=vol.Schema({
-#                 vol.Required(
-#                     "location_name",
-#                     default=config_subentry.data.get("location_name")
-#                 ): str,
-#                 vol.Required(
-#                     "latitude",
-#                     default=config_subentry.data.get("latitude")
-#                 ): float,
-#                 vol.Required(
-#                     "longitude",
-#                     default=config_subentry.data.get("longitude")
-#                 ): float,
-#             })
-#         )
-#
-#
-# # Add to main ConfigFlow class:
-# #
-# # @classmethod
-# # @callback
-# # def async_get_supported_subentry_types(
-# #     cls,
-# #     config_entry: ConfigEntry
-# # ) -> dict[str, type[ConfigSubentryFlow]]:
-# #     """Return subentries supported by this integration."""
-# #     return {
-# #         "location": ExampleLocationSubentryFlowHandler
-# #     }
+from typing import Any
+
+from custom_components.smart_venetian_blinds.config_flow_handler.schemas import (
+    get_cover_reconfigure_schema,
+    get_cover_subentry_schema,
+)
+from custom_components.smart_venetian_blinds.const import CONF_COVER_ENTITY, CONF_COVER_NAME, LOGGER
+from homeassistant.config_entries import ConfigSubentryFlow, SubentryFlowResult
+from homeassistant.helpers import entity_registry as er
 
 
-__all__: list[str] = []  # Empty until subentry flows are implemented
+class CoverSubentryFlowHandler(ConfigSubentryFlow):
+    """
+    Handle subentry flow for adding and modifying covers.
+
+    This flow allows users to add individual covers to a window group
+    and configure their specific settings like drive position, tilt angles,
+    and behavior when sun is behind the facade.
+    """
+
+    async def async_step_user(
+        self,
+        user_input: dict[str, Any] | None = None,
+    ) -> SubentryFlowResult:
+        """
+        User flow to add a new cover to the window group.
+
+        Args:
+            user_input: The user input from the form.
+
+        Returns:
+            SubentryFlowResult showing form or creating subentry.
+        """
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            cover_entity_id = user_input[CONF_COVER_ENTITY]
+
+            # Check if cover is already added to this group
+            config_entry = self._get_entry()
+            for subentry in config_entry.subentries.values():
+                if subentry.data.get(CONF_COVER_ENTITY) == cover_entity_id:
+                    errors["base"] = "cover_already_added"
+                    break
+
+            if not errors:
+                # Get a friendly name for the subentry
+                title = self._get_cover_title(cover_entity_id, user_input)
+
+                LOGGER.debug(
+                    "Adding cover %s to group %s",
+                    cover_entity_id,
+                    config_entry.title,
+                )
+
+                return self.async_create_entry(
+                    title=title,
+                    data=user_input,
+                )
+
+        return self.async_show_form(
+            step_id="user",
+            data_schema=get_cover_subentry_schema(user_input),
+            errors=errors,
+        )
+
+    async def async_step_reconfigure(
+        self,
+        user_input: dict[str, Any] | None = None,
+    ) -> SubentryFlowResult:
+        """
+        User flow to modify an existing cover configuration.
+
+        Args:
+            user_input: The user input from the form.
+
+        Returns:
+            SubentryFlowResult showing form or updating subentry.
+        """
+        config_subentry = self._get_reconfigure_subentry()
+
+        if user_input is not None:
+            # Merge with existing data (keep the cover entity ID)
+            new_data = {**config_subentry.data, **user_input}
+
+            # Get updated title
+            title = self._get_cover_title(
+                config_subentry.data[CONF_COVER_ENTITY],
+                new_data,
+            )
+
+            LOGGER.debug(
+                "Reconfiguring cover %s",
+                config_subentry.data[CONF_COVER_ENTITY],
+            )
+
+            # Update the subentry via config entries manager
+            config_entry = self._get_entry()
+            self.hass.config_entries.async_update_subentry(
+                config_entry,
+                config_subentry,
+                title=title,
+                data=new_data,
+            )
+
+            return self.async_abort(reason="reconfigure_successful")
+
+        return self.async_show_form(
+            step_id="reconfigure",
+            data_schema=get_cover_reconfigure_schema(config_subentry.data),
+        )
+
+    def _get_cover_title(
+        self,
+        cover_entity_id: str,
+        user_input: dict[str, Any],
+    ) -> str:
+        """
+        Get a friendly title for the cover subentry.
+
+        Uses custom name if provided, otherwise derives from entity name.
+
+        Args:
+            cover_entity_id: The cover entity ID.
+            user_input: User input that may contain a custom name.
+
+        Returns:
+            A friendly title for the subentry.
+        """
+        # Use custom name if provided
+        custom_name = user_input.get(CONF_COVER_NAME, "").strip()
+        if custom_name:
+            return custom_name
+
+        # Try to get name from entity registry
+        ent_reg = er.async_get(self.hass)
+        entity_entry = ent_reg.async_get(cover_entity_id)
+        if entity_entry and entity_entry.name:
+            return entity_entry.name
+
+        # Fall back to entity ID
+        return cover_entity_id.split(".")[-1].replace("_", " ").title()
+
+
+__all__ = ["CoverSubentryFlowHandler"]

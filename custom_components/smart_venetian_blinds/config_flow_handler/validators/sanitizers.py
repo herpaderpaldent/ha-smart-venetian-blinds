@@ -2,33 +2,24 @@
 Input sanitizers and normalizers.
 
 Functions for cleaning and normalizing user inputs.
-
-When adding many sanitizers, consider organizing by type:
-- text.py: Text input sanitizers
-- network.py: URL, host, port sanitizers
-- identifiers.py: Device ID, serial number normalizers
 """
 
 from __future__ import annotations
 
 
-def sanitize_username(username: str) -> str:
+def sanitize_name(name: str) -> str:
     """
-    Sanitize username input.
-
-    This function can be extended to normalize usernames (e.g., lowercase,
-    trim whitespace) depending on API requirements.
+    Sanitize a name input.
 
     Args:
-        username: Raw username input.
+        name: Raw name input.
 
     Returns:
-        Sanitized username.
-
+        Sanitized name with trimmed whitespace.
     """
-    return username.strip()
+    return name.strip()
 
 
 __all__ = [
-    "sanitize_username",
+    "sanitize_name",
 ]

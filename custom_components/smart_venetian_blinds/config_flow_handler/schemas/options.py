@@ -3,11 +3,6 @@ Options flow schemas.
 
 Schemas for the options flow that allows users to modify settings
 after initial configuration.
-
-When adding many options, consider grouping them:
-- basic_options.py: Common settings (update interval, debug mode)
-- advanced_options.py: Advanced settings
-- device_options.py: Device-specific settings
 """
 
 from __future__ import annotations
@@ -17,7 +12,12 @@ from typing import Any
 
 import voluptuous as vol
 
-from custom_components.smart_venetian_blinds.const import DEFAULT_ENABLE_DEBUGGING, DEFAULT_UPDATE_INTERVAL_HOURS
+from custom_components.smart_venetian_blinds.const import (
+    CONF_CHANGE_THRESHOLD,
+    CONF_MIN_UPDATE_INTERVAL,
+    DEFAULT_CHANGE_THRESHOLD,
+    DEFAULT_MIN_UPDATE_INTERVAL,
+)
 from homeassistant.helpers import selector
 
 
@@ -30,31 +30,34 @@ def get_options_schema(defaults: Mapping[str, Any] | None = None) -> vol.Schema:
 
     Returns:
         Voluptuous schema for options configuration.
-
     """
     defaults = defaults or {}
     return vol.Schema(
         {
             vol.Optional(
-                "update_interval_hours",
-                default=defaults.get("update_interval_hours", DEFAULT_UPDATE_INTERVAL_HOURS),
+                CONF_CHANGE_THRESHOLD,
+                default=defaults.get(CONF_CHANGE_THRESHOLD, DEFAULT_CHANGE_THRESHOLD),
             ): selector.NumberSelector(
                 selector.NumberSelectorConfig(
-                    min=0.25,
-                    max=24,
-                    step=0.25,
-                    unit_of_measurement="h",
+                    min=1,
+                    max=30,
+                    step=1,
+                    unit_of_measurement="°",
                     mode=selector.NumberSelectorMode.BOX,
                 ),
             ),
             vol.Optional(
-                "enable_debugging",
-                default=defaults.get("enable_debugging", DEFAULT_ENABLE_DEBUGGING),
-            ): selector.BooleanSelector(),
-            vol.Optional(
-                "custom_icon",
-                default=defaults.get("custom_icon"),
-            ): selector.IconSelector(),
+                CONF_MIN_UPDATE_INTERVAL,
+                default=defaults.get(CONF_MIN_UPDATE_INTERVAL, DEFAULT_MIN_UPDATE_INTERVAL),
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=10,
+                    max=600,
+                    step=10,
+                    unit_of_measurement="s",
+                    mode=selector.NumberSelectorMode.BOX,
+                ),
+            ),
         },
     )
 

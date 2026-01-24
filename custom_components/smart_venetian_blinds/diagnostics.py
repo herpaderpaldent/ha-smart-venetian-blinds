@@ -1,4 +1,7 @@
-"""Diagnostics support for smart_venetian_blinds.
+"""
+Diagnostics support for smart_venetian_blinds.
+
+Provides diagnostic information about the integration state for troubleshooting.
 
 Learn more about diagnostics:
 https://developers.home-assistant.io/docs/core/integration_diagnostics
@@ -8,24 +11,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.helpers import device_registry as dr, entity_registry as er
-from homeassistant.helpers.redact import async_redact_data
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
 
     from .data import SmartVenetianBlindsConfigEntry
-
-# Fields to redact from diagnostics - CRITICAL for security!
-TO_REDACT = {
-    CONF_PASSWORD,
-    CONF_USERNAME,
-    "username",
-    "password",
-    "api_key",
-    "token",
-}
 
 
 async def async_get_config_entry_diagnostics(
@@ -34,7 +25,8 @@ async def async_get_config_entry_diagnostics(
 ) -> dict[str, Any]:
     """Return diagnostics for a config entry."""
     coordinator = entry.runtime_data.coordinator
-    client = entry.runtime_data.client
+    sun_provider = entry.runtime_data.sun_provider
+    state = entry.runtime_data.state
     integration = entry.runtime_data.integration
 
     # Get device and entity information
@@ -52,7 +44,6 @@ async def async_get_config_entry_diagnostics(
                 "name": device.name,
                 "manufacturer": device.manufacturer,
                 "model": device.model,
-                "sw_version": device.sw_version,
                 "entity_count": len(entities),
                 "entities": [
                     {
@@ -60,72 +51,89 @@ async def async_get_config_entry_diagnostics(
                         "platform": entity.platform,
                         "original_name": entity.original_name,
                         "disabled": entity.disabled,
-                        "disabled_by": entity.disabled_by.value if entity.disabled_by else None,
                     }
                     for entity in entities
                 ],
             }
         )
 
-    # Coordinator statistics
-    coordinator_info = {
-        "last_update_success": coordinator.last_update_success,
-        "update_interval": str(coordinator.update_interval),
-        "data_keys": list(coordinator.data.keys()) if isinstance(coordinator.data, dict) else None,
+    # Sun data information
+    sun_position = sun_provider.get_sun_position()
+    sun_info = {
+        "available": sun_provider.is_available,
+        "tracked_entities": sun_provider.get_tracked_entities(),
+        "current_position": {
+            "azimuth_deg": sun_position.azimuth_deg if sun_position else None,
+            "elevation_deg": sun_position.elevation_deg if sun_position else None,
+        }
+        if sun_position
+        else None,
     }
 
-    # API client information (no sensitive data)
-    api_info = {
-        "base_endpoint": "https://jsonplaceholder.typicode.com",
-        "has_credentials": bool(client._username),  # noqa: SLF001
+    # Coordinator information
+    coordinator_info = {
+        "last_update_success": coordinator.last_update_success,
+        "change_threshold": coordinator.change_threshold,
+        "min_update_interval": coordinator.min_update_interval,
     }
+
+    # Calculation result
+    calculation_info = None
+    if coordinator.data:
+        calculation_info = {
+            "slat_angle_deg": coordinator.data.slat_angle_deg,
+            "slat_position_percent": coordinator.data.slat_position_percent,
+            "profile_angle_deg": coordinator.data.profile_angle_deg,
+            "sun_is_behind_facade": coordinator.data.sun_is_behind_facade,
+        }
+
+    # Group state
+    state_info = {
+        "auto_control_enabled": state.auto_control_enabled,
+        "last_applied_angle": state.last_applied_angle,
+        "last_applied_time": state.last_applied_time.isoformat() if state.last_applied_time else None,
+    }
+
+    # Group configuration
+    group_info = coordinator.get_group_data()
+
+    # Subentry (cover) information
+    covers_info = []
+    for subentry_id, subentry in entry.subentries.items():
+        covers_info.append(
+            {
+                "subentry_id": subentry_id,
+                "title": subentry.title,
+                "data": dict(subentry.data),
+            }
+        )
 
     # Integration information
     integration_info = {
         "name": integration.name,
         "version": integration.version,
         "domain": integration.domain,
-        "documentation": integration.documentation,
-        "issue_tracker": integration.issue_tracker,
     }
 
-    # Config entry details (with redacted sensitive data)
+    # Config entry details
     entry_info = {
         "entry_id": entry.entry_id,
         "version": entry.version,
-        "minor_version": entry.minor_version,
-        "domain": entry.domain,
         "title": entry.title,
         "state": str(entry.state),
         "unique_id": entry.unique_id,
-        "disabled_by": entry.disabled_by.value if entry.disabled_by else None,
-        "data": async_redact_data(entry.data, TO_REDACT),
-        "options": async_redact_data(entry.options, TO_REDACT),
+        "data": dict(entry.data),
+        "options": dict(entry.options),
     }
-
-    # Error information
-    error_info = {
-        "last_exception": str(coordinator.last_exception) if coordinator.last_exception else None,
-        "last_exception_type": (type(coordinator.last_exception).__name__ if coordinator.last_exception else None),
-    }
-
-    # Current data sample (sanitized)
-    data_sample = {}
-    if coordinator.data:
-        if isinstance(coordinator.data, dict):
-            # Include sample data but sanitize sensitive info
-            data_sample = {
-                "title": coordinator.data.get("title"),
-                "body_length": len(coordinator.data.get("body", "")) if coordinator.data.get("body") else 0,
-                "has_user_id": "userId" in coordinator.data,
-            }
 
     return {
         "entry": entry_info,
         "integration": integration_info,
+        "group": group_info,
+        "sun": sun_info,
         "coordinator": coordinator_info,
-        "api": api_info,
+        "calculation": calculation_info,
+        "state": state_info,
+        "covers": covers_info,
         "devices": device_info,
-        "data_sample": data_sample,
-        "error": error_info,
     }

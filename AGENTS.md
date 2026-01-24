@@ -563,3 +563,5 @@ See `.github/copilot-instructions.md` for detailed workflow guidance.
 - [Pyright Configuration](https://microsoft.github.io/pyright/#/configuration) - Type checker documentation
 - [pytest Documentation](https://docs.pytest.org/) - Testing framework
 - See `CONTRIBUTING.md` for contribution guidelines
+
+

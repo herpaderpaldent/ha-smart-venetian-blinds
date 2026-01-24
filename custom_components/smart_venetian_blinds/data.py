@@ -5,12 +5,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from .coordinator.state import GroupState
+
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.loader import Integration
 
-    from .api import SmartVenetianBlindsApiClient
     from .coordinator import SmartVenetianBlindsDataUpdateCoordinator
+    from .sun import SunDataProvider
 
 
 type SmartVenetianBlindsConfigEntry = ConfigEntry[SmartVenetianBlindsData]
@@ -18,8 +20,26 @@ type SmartVenetianBlindsConfigEntry = ConfigEntry[SmartVenetianBlindsData]
 
 @dataclass
 class SmartVenetianBlindsData:
-    """Data for smart_venetian_blinds."""
+    """
+    Runtime data for a smart_venetian_blinds config entry.
 
-    client: SmartVenetianBlindsApiClient
+    Each config entry represents a window group with:
+    - Shared sun data provider
+    - Coordinator for managing updates
+    - Group state for calculation results
+    """
+
+    sun_provider: SunDataProvider
     coordinator: SmartVenetianBlindsDataUpdateCoordinator
     integration: Integration
+    state: GroupState
+
+    @property
+    def auto_control_enabled(self) -> bool:
+        """Get the auto control state for this group."""
+        return self.state.auto_control_enabled
+
+    @auto_control_enabled.setter
+    def auto_control_enabled(self, value: bool) -> None:
+        """Set the auto control state for this group."""
+        self.state.auto_control_enabled = value

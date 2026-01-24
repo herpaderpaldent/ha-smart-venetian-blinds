@@ -3,17 +3,13 @@ Base entity class for smart_venetian_blinds.
 
 This module provides the base entity class that all integration entities inherit from.
 It handles common functionality like device info, unique IDs, and coordinator integration.
-
-For more information on entities:
-https://developers.home-assistant.io/docs/core/entity
-https://developers.home-assistant.io/docs/core/entity/index/#common-properties
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from custom_components.smart_venetian_blinds.const import ATTRIBUTION
+from custom_components.smart_venetian_blinds.const import ATTRIBUTION, DOMAIN
 from custom_components.smart_venetian_blinds.coordinator import SmartVenetianBlindsDataUpdateCoordinator
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -31,10 +27,6 @@ class SmartVenetianBlindsEntity(CoordinatorEntity[SmartVenetianBlindsDataUpdateC
     - Device info management
     - Unique ID generation
     - Attribution and naming conventions
-
-    For more information:
-    https://developers.home-assistant.io/docs/core/entity
-    https://developers.home-assistant.io/docs/integration_fetching_data#coordinated-single-api-poll-for-data-for-all-entities
     """
 
     _attr_attribution = ATTRIBUTION
@@ -51,20 +43,13 @@ class SmartVenetianBlindsEntity(CoordinatorEntity[SmartVenetianBlindsDataUpdateC
         Args:
             coordinator: The data update coordinator for this entity.
             entity_description: The entity description defining characteristics.
-
         """
         super().__init__(coordinator)
         self.entity_description = entity_description
-        # Include entity description key in unique_id to support multiple entities
         self._attr_unique_id = f"{coordinator.config_entry.entry_id}_{entity_description.key}"
         self._attr_device_info = DeviceInfo(
-            identifiers={
-                (
-                    coordinator.config_entry.domain,
-                    coordinator.config_entry.entry_id,
-                ),
-            },
+            identifiers={(DOMAIN, coordinator.config_entry.entry_id)},
             name=coordinator.config_entry.title,
-            manufacturer=coordinator.config_entry.domain,
-            model=coordinator.data.get("model", "Unknown"),
+            manufacturer="Smart Venetian Blinds",
+            model="Window Group",
         )
