@@ -1,10 +1,13 @@
-"""Sun position package for smart_venetian_blinds."""
+"""Sun calculation package for smart_venetian_blinds."""
 
-from __future__ import annotations
-
-from .listener import SunStateListener
-from .math import SlatCalculationResult, SunPosition, apply_tilt_inversion, calculate_slat_angle
-from .provider import SunDataProvider
+from custom_components.smart_venetian_blinds.sun.listener import SunStateListener
+from custom_components.smart_venetian_blinds.sun.math import (
+    SlatCalculationResult,
+    SunPosition,
+    apply_tilt_inversion,
+    calculate_slat_angle,
+)
+from custom_components.smart_venetian_blinds.sun.provider import SunDataProvider
 
 __all__ = [
     "SlatCalculationResult",

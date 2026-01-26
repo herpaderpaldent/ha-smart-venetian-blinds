@@ -148,8 +148,8 @@
       "slat_angle": {
         "name": "Slat Angle"
       },
-      "slat_position": {
-        "name": "Slat Position"
+      "slat_tilt": {
+        "name": "Slat Tilt"
       },
       "profile_angle": {
         "name": "Profile Angle"

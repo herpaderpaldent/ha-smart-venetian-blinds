@@ -23,7 +23,7 @@ class SlatCalculationResult:
     """Result of slat angle calculation."""
 
     slat_angle_deg: float  # 0° = horizontal, 90° = closed
-    slat_position_percent: float  # 0% = closed, 100% = open (default convention)
+    slat_tilt_percent: float  # 0% = closed, 100% = open (default convention)
     profile_angle_deg: float  # Vertical shadow angle (omega)
     horizontal_shadow_angle_deg: float  # HSA
     sun_is_behind_facade: bool  # True if sun doesn't hit this facade
@@ -75,7 +75,7 @@ def calculate_slat_angle(
     if abs(hsa_deg) > 90:
         return SlatCalculationResult(
             slat_angle_deg=0.0,
-            slat_position_percent=100.0,
+            slat_tilt_percent=100.0,
             profile_angle_deg=0.0,
             horizontal_shadow_angle_deg=hsa_deg,
             sun_is_behind_facade=True,
@@ -123,11 +123,11 @@ def calculate_slat_angle(
     # Step E: Convert to percent (0° = 100% open, 90° = 0% open)
     # Clamp theta to [0, 90] for percent calculation
     theta_for_percent = max(0.0, min(90.0, theta_deg))
-    slat_position_percent = 100.0 * (1.0 - theta_for_percent / 90.0)
+    slat_tilt_percent = 100.0 * (1.0 - theta_for_percent / 90.0)
 
     return SlatCalculationResult(
         slat_angle_deg=round(theta_deg, 1),
-        slat_position_percent=round(slat_position_percent, 1),
+        slat_tilt_percent=round(slat_tilt_percent, 1),
         profile_angle_deg=round(omega_deg, 1),
         horizontal_shadow_angle_deg=round(hsa_deg, 1),
         sun_is_behind_facade=False,

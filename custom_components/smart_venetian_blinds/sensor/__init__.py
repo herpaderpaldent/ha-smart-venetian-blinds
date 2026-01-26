@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from custom_components.smart_venetian_blinds.const import PARALLEL_UPDATES as PARALLEL_UPDATES
 
-from .slat_sensors import ProfileAngleSensor, SlatAngleSensor, SlatPositionSensor
+from .slat_sensors import ProfileAngleSensor, SlatAngleSensor, SlatTiltSensor
 
 if TYPE_CHECKING:
     from custom_components.smart_venetian_blinds.data import SmartVenetianBlindsConfigEntry
@@ -25,7 +25,7 @@ async def async_setup_entry(
     async_add_entities(
         [
             SlatAngleSensor(coordinator),
-            SlatPositionSensor(coordinator),
+            SlatTiltSensor(coordinator),
             ProfileAngleSensor(coordinator),
         ]
     )

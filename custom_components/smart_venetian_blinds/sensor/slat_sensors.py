@@ -3,7 +3,7 @@ Slat calculation sensors for smart_venetian_blinds.
 
 Provides sensors for:
 - Slat angle (degrees)
-- Slat position (percent)
+- Slat tilt (percent)
 - Profile angle (degrees, diagnostic)
 """
 
@@ -24,9 +24,9 @@ SLAT_ANGLE_DESCRIPTION = SensorEntityDescription(
     icon="mdi:angle-acute",
 )
 
-SLAT_POSITION_DESCRIPTION = SensorEntityDescription(
-    key="slat_position",
-    translation_key="slat_position",
+SLAT_TILT_DESCRIPTION = SensorEntityDescription(
+    key="slat_tilt",
+    translation_key="slat_tilt",
     native_unit_of_measurement=PERCENTAGE,
     state_class=SensorStateClass.MEASUREMENT,
     icon="mdi:blinds",
@@ -71,12 +71,12 @@ class SlatAngleSensor(CoordinatorEntity[SmartVenetianBlindsDataUpdateCoordinator
         return self.coordinator.data.slat_angle_deg
 
 
-class SlatPositionSensor(CoordinatorEntity[SmartVenetianBlindsDataUpdateCoordinator], SensorEntity):
-    """Sensor for calculated slat position percent."""
+class SlatTiltSensor(CoordinatorEntity[SmartVenetianBlindsDataUpdateCoordinator], SensorEntity):
+    """Sensor for calculated slat tilt percent."""
 
     _attr_attribution = ATTRIBUTION
     _attr_has_entity_name = True
-    entity_description = SLAT_POSITION_DESCRIPTION
+    entity_description = SLAT_TILT_DESCRIPTION
 
     def __init__(
         self,
@@ -84,7 +84,7 @@ class SlatPositionSensor(CoordinatorEntity[SmartVenetianBlindsDataUpdateCoordina
     ) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
-        self._attr_unique_id = f"{coordinator.config_entry.entry_id}_slat_position"
+        self._attr_unique_id = f"{coordinator.config_entry.entry_id}_slat_tilt"
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, coordinator.config_entry.entry_id)},
             name=coordinator.config_entry.title,
@@ -94,10 +94,10 @@ class SlatPositionSensor(CoordinatorEntity[SmartVenetianBlindsDataUpdateCoordina
 
     @property
     def native_value(self) -> float | None:
-        """Return the slat position percent."""
+        """Return the slat tilt percent."""
         if self.coordinator.data is None:
             return None
-        return self.coordinator.data.slat_position_percent
+        return self.coordinator.data.slat_tilt_percent
 
 
 class ProfileAngleSensor(CoordinatorEntity[SmartVenetianBlindsDataUpdateCoordinator], SensorEntity):
@@ -132,8 +132,8 @@ class ProfileAngleSensor(CoordinatorEntity[SmartVenetianBlindsDataUpdateCoordina
 __all__ = [
     "PROFILE_ANGLE_DESCRIPTION",
     "SLAT_ANGLE_DESCRIPTION",
-    "SLAT_POSITION_DESCRIPTION",
+    "SLAT_TILT_DESCRIPTION",
     "ProfileAngleSensor",
     "SlatAngleSensor",
-    "SlatPositionSensor",
+    "SlatTiltSensor",
 ]

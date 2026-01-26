@@ -90,7 +90,7 @@ class CoverController:
     """
 
     # Timeouts and tolerances
-    POSITION_TIMEOUT_SEC = 30
+    POSITION_TIMEOUT_SEC = 60
     POSITION_TOLERANCE_PERCENT = 2
 
     def __init__(self, hass: HomeAssistant) -> None:
@@ -169,7 +169,7 @@ class CoverController:
 
         # Calculate and apply tilt
         tilt_percent = apply_tilt_inversion(
-            calculation.slat_position_percent,
+            calculation.slat_tilt_percent,
             config.invert_tilt,
         )
 

@@ -1,54 +1,57 @@
-"""
-Sun data provider for smart_venetian_blinds.
-
-Reads sun position from Home Assistant entities with fallback support.
-"""
+# sun/provider.py
+"""Provider for sun position data from Home Assistant."""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from custom_components.smart_venetian_blinds.const import LOGGER, SENSOR_SUN_AZIMUTH, SENSOR_SUN_ELEVATION, SUN_ENTITY
+from custom_components.smart_venetian_blinds.const import SENSOR_SUN_AZIMUTH, SENSOR_SUN_ELEVATION, SUN_ENTITY
 from custom_components.smart_venetian_blinds.sun.math import SunPosition
+from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
+from homeassistant.core import callback
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
 
 
 class SunDataProvider:
-    """
-    Provides sun position data from Home Assistant entities.
-
-    Supports two data sources with automatic fallback:
-    1. Primary: sensor.sun_solar_azimuth + sensor.sun_solar_elevation
-    2. Fallback: sun.sun entity attributes (azimuth, elevation)
-    """
+    """Provides sun position data from Home Assistant states."""
 
     def __init__(self, hass: HomeAssistant) -> None:
-        """Initialize the sun data provider."""
+        """Initialize the provider."""
         self._hass = hass
 
+    @callback
     def get_sun_position(self) -> SunPosition | None:
         """
-        Get current sun position from available entities.
+        Get current sun position from HA states.
+
+        Prefers dedicated sensors if available, falls back to sun.sun attributes.
 
         Returns:
-            SunPosition with azimuth and elevation, or None if unavailable.
+            SunPosition or None if data unavailable.
         """
-        # Try primary sensors first
-        position = self._get_from_sensors()
-        if position is not None:
-            return position
+        # Try sensors first
+        result = self._get_from_sensors()
+        if result is not None:
+            return result
 
         # Fallback to sun.sun entity
         return self._get_from_sun_entity()
 
     def _get_from_sensors(self) -> SunPosition | None:
-        """Try to get sun position from dedicated sensors."""
+        """Get sun position from dedicated sensor entities."""
         azimuth_state = self._hass.states.get(SENSOR_SUN_AZIMUTH)
         elevation_state = self._hass.states.get(SENSOR_SUN_ELEVATION)
 
-        if azimuth_state is None or elevation_state is None:
+        # Both sensors must be present
+        if not azimuth_state or not elevation_state:
+            return None
+
+        # Both must have valid states
+        if azimuth_state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN):
+            return None
+        if elevation_state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN):
             return None
 
         try:
@@ -56,45 +59,36 @@ class SunDataProvider:
             elevation = float(elevation_state.state)
             return SunPosition(azimuth_deg=azimuth, elevation_deg=elevation)
         except (ValueError, TypeError):
-            LOGGER.debug(
-                "Invalid sun sensor values: azimuth=%s, elevation=%s",
-                azimuth_state.state,
-                elevation_state.state,
-            )
             return None
 
     def _get_from_sun_entity(self) -> SunPosition | None:
         """Get sun position from sun.sun entity attributes."""
         sun_state = self._hass.states.get(SUN_ENTITY)
-
-        if sun_state is None:
-            LOGGER.warning("No sun entity available")
+        if not sun_state:
             return None
 
+        # Get attributes with defaults
+        azimuth = sun_state.attributes.get("azimuth", 0.0)
+        elevation = sun_state.attributes.get("elevation", 0.0)
+
         try:
-            azimuth = float(sun_state.attributes.get("azimuth", 0))
-            elevation = float(sun_state.attributes.get("elevation", 0))
-            return SunPosition(azimuth_deg=azimuth, elevation_deg=elevation)
-        except (ValueError, TypeError) as ex:
-            LOGGER.debug("Invalid sun.sun attributes: %s", ex)
+            return SunPosition(azimuth_deg=float(azimuth), elevation_deg=float(elevation))
+        except (ValueError, TypeError):
             return None
 
     def get_tracked_entities(self) -> list[str]:
-        """
-        Get list of entity IDs to track for state changes.
+        """Get list of entity IDs to track for sun position updates."""
+        # Only return both sensors if BOTH are present
+        azimuth_exists = self._hass.states.get(SENSOR_SUN_AZIMUTH) is not None
+        elevation_exists = self._hass.states.get(SENSOR_SUN_ELEVATION) is not None
 
-        Returns entities in priority order - if primary sensors exist,
-        track those; otherwise track sun.sun.
-        """
-        azimuth_state = self._hass.states.get(SENSOR_SUN_AZIMUTH)
-        elevation_state = self._hass.states.get(SENSOR_SUN_ELEVATION)
-
-        if azimuth_state is not None and elevation_state is not None:
+        if azimuth_exists and elevation_exists:
             return [SENSOR_SUN_AZIMUTH, SENSOR_SUN_ELEVATION]
 
+        # Fallback to sun.sun if not both sensors present
         return [SUN_ENTITY]
 
     @property
     def is_available(self) -> bool:
-        """Check if sun data is available."""
+        """Return True if sun position data is available."""
         return self.get_sun_position() is not None

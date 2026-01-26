@@ -82,7 +82,7 @@ async def async_get_config_entry_diagnostics(
     if coordinator.data:
         calculation_info = {
             "slat_angle_deg": coordinator.data.slat_angle_deg,
-            "slat_position_percent": coordinator.data.slat_position_percent,
+            "slat_tilt_percent": coordinator.data.slat_tilt_percent,
             "profile_angle_deg": coordinator.data.profile_angle_deg,
             "sun_is_behind_facade": coordinator.data.sun_is_behind_facade,
         }
