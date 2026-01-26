@@ -13,7 +13,7 @@ from custom_components.smart_venetian_blinds.const import ATTRIBUTION, DOMAIN
 from custom_components.smart_venetian_blinds.coordinator import SmartVenetianBlindsDataUpdateCoordinator
 from homeassistant.components.sensor import SensorEntity, SensorEntityDescription, SensorStateClass
 from homeassistant.const import DEGREE, PERCENTAGE
-from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 SLAT_ANGLE_DESCRIPTION = SensorEntityDescription(
@@ -61,6 +61,7 @@ class SlatAngleSensor(CoordinatorEntity[SmartVenetianBlindsDataUpdateCoordinator
             name=coordinator.config_entry.title,
             manufacturer="Smart Venetian Blinds",
             model="Window Group",
+            entry_type=DeviceEntryType.SERVICE,
         )
 
     @property
@@ -90,6 +91,7 @@ class SlatTiltSensor(CoordinatorEntity[SmartVenetianBlindsDataUpdateCoordinator]
             name=coordinator.config_entry.title,
             manufacturer="Smart Venetian Blinds",
             model="Window Group",
+            entry_type=DeviceEntryType.SERVICE,
         )
 
     @property
@@ -119,6 +121,7 @@ class ProfileAngleSensor(CoordinatorEntity[SmartVenetianBlindsDataUpdateCoordina
             name=coordinator.config_entry.title,
             manufacturer="Smart Venetian Blinds",
             model="Window Group",
+            entry_type=DeviceEntryType.SERVICE,
         )
 
     @property

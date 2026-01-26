@@ -11,7 +11,7 @@ from typing import Any
 from custom_components.smart_venetian_blinds.const import ATTRIBUTION, DOMAIN
 from custom_components.smart_venetian_blinds.coordinator import SmartVenetianBlindsDataUpdateCoordinator
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
-from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 AUTO_CONTROL_DESCRIPTION = SwitchEntityDescription(
@@ -45,6 +45,7 @@ class AutoControlSwitch(CoordinatorEntity[SmartVenetianBlindsDataUpdateCoordinat
             name=coordinator.config_entry.title,
             manufacturer="Smart Venetian Blinds",
             model="Window Group",
+            entry_type=DeviceEntryType.SERVICE,
         )
 
     @property

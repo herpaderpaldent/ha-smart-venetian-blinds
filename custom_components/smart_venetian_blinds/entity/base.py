@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 from custom_components.smart_venetian_blinds.const import ATTRIBUTION, DOMAIN
 from custom_components.smart_venetian_blinds.coordinator import SmartVenetianBlindsDataUpdateCoordinator
-from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 if TYPE_CHECKING:
@@ -52,4 +52,5 @@ class SmartVenetianBlindsEntity(CoordinatorEntity[SmartVenetianBlindsDataUpdateC
             name=coordinator.config_entry.title,
             manufacturer="Smart Venetian Blinds",
             model="Window Group",
+            entry_type=DeviceEntryType.SERVICE,
         )
