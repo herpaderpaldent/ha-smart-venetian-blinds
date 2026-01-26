@@ -92,6 +92,10 @@ def cover_config_default() -> CoverConfig:
         manual_close_threshold=30,
         minimum_tilt_change=5,
         enabled=True,
+        reflection_protection_enabled=False,
+        reflection_protection_min_tilt=50,
+        reflection_protection_start_time="09:00",
+        reflection_protection_end_time="17:00",
     )
 
 
@@ -110,6 +114,10 @@ def cover_config_inverted() -> CoverConfig:
         manual_close_threshold=30,
         minimum_tilt_change=5,
         enabled=True,
+        reflection_protection_enabled=False,
+        reflection_protection_min_tilt=50,
+        reflection_protection_start_time="09:00",
+        reflection_protection_end_time="17:00",
     )
 
 
@@ -128,6 +136,10 @@ def cover_config_disabled() -> CoverConfig:
         manual_close_threshold=30,
         minimum_tilt_change=5,
         enabled=False,
+        reflection_protection_enabled=False,
+        reflection_protection_min_tilt=50,
+        reflection_protection_start_time="09:00",
+        reflection_protection_end_time="17:00",
     )
 
 
@@ -146,6 +158,10 @@ def cover_config_no_sun_open() -> CoverConfig:
         manual_close_threshold=30,
         minimum_tilt_change=5,
         enabled=True,
+        reflection_protection_enabled=False,
+        reflection_protection_min_tilt=50,
+        reflection_protection_start_time="09:00",
+        reflection_protection_end_time="17:00",
     )
 
 
@@ -164,6 +180,10 @@ def cover_config_no_sun_close() -> CoverConfig:
         manual_close_threshold=30,
         minimum_tilt_change=5,
         enabled=True,
+        reflection_protection_enabled=False,
+        reflection_protection_min_tilt=50,
+        reflection_protection_start_time="09:00",
+        reflection_protection_end_time="17:00",
     )
 
 
@@ -182,6 +202,10 @@ def cover_config_no_sun_set_percent() -> CoverConfig:
         manual_close_threshold=30,
         minimum_tilt_change=5,
         enabled=True,
+        reflection_protection_enabled=False,
+        reflection_protection_min_tilt=50,
+        reflection_protection_start_time="09:00",
+        reflection_protection_end_time="17:00",
     )
 
 

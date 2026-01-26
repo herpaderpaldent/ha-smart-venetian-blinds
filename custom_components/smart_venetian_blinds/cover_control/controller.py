@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
+from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from custom_components.smart_venetian_blinds.const import (
@@ -21,6 +22,10 @@ from custom_components.smart_venetian_blinds.const import (
     CONF_MINIMUM_TILT_CHANGE,
     CONF_NO_SUN_BEHAVIOR,
     CONF_NO_SUN_POSITION,
+    CONF_REFLECTION_PROTECTION_ENABLED,
+    CONF_REFLECTION_PROTECTION_END_TIME,
+    CONF_REFLECTION_PROTECTION_MIN_TILT,
+    CONF_REFLECTION_PROTECTION_START_TIME,
     CONF_RESPECT_MANUAL_CLOSE,
     DEFAULT_COVER_ENABLED,
     DEFAULT_DRIVE_POSITION,
@@ -31,12 +36,17 @@ from custom_components.smart_venetian_blinds.const import (
     DEFAULT_MINIMUM_TILT_CHANGE,
     DEFAULT_NO_SUN_BEHAVIOR,
     DEFAULT_NO_SUN_POSITION,
+    DEFAULT_REFLECTION_PROTECTION_ENABLED,
+    DEFAULT_REFLECTION_PROTECTION_END_TIME,
+    DEFAULT_REFLECTION_PROTECTION_MIN_TILT,
+    DEFAULT_REFLECTION_PROTECTION_START_TIME,
     DEFAULT_RESPECT_MANUAL_CLOSE,
     LOGGER,
 )
 from custom_components.smart_venetian_blinds.sun.math import apply_tilt_inversion
 from homeassistant.components.cover import ATTR_CURRENT_POSITION, ATTR_CURRENT_TILT_POSITION
 from homeassistant.const import ATTR_ENTITY_ID, SERVICE_SET_COVER_POSITION, SERVICE_SET_COVER_TILT_POSITION
+from homeassistant.util import dt as dt_util
 
 if TYPE_CHECKING:
     from custom_components.smart_venetian_blinds.sun import SlatCalculationResult
@@ -59,6 +69,10 @@ class CoverConfig:
     manual_close_threshold: int
     minimum_tilt_change: int
     enabled: bool
+    reflection_protection_enabled: bool
+    reflection_protection_min_tilt: int
+    reflection_protection_start_time: str
+    reflection_protection_end_time: str
 
     @classmethod
     def from_subentry(cls, subentry: ConfigSubentry) -> CoverConfig:
@@ -76,6 +90,18 @@ class CoverConfig:
             manual_close_threshold=data.get(CONF_MANUAL_CLOSE_THRESHOLD, DEFAULT_MANUAL_CLOSE_THRESHOLD),
             minimum_tilt_change=data.get(CONF_MINIMUM_TILT_CHANGE, DEFAULT_MINIMUM_TILT_CHANGE),
             enabled=data.get(CONF_COVER_ENABLED, DEFAULT_COVER_ENABLED),
+            reflection_protection_enabled=data.get(
+                CONF_REFLECTION_PROTECTION_ENABLED, DEFAULT_REFLECTION_PROTECTION_ENABLED
+            ),
+            reflection_protection_min_tilt=data.get(
+                CONF_REFLECTION_PROTECTION_MIN_TILT, DEFAULT_REFLECTION_PROTECTION_MIN_TILT
+            ),
+            reflection_protection_start_time=data.get(
+                CONF_REFLECTION_PROTECTION_START_TIME, DEFAULT_REFLECTION_PROTECTION_START_TIME
+            ),
+            reflection_protection_end_time=data.get(
+                CONF_REFLECTION_PROTECTION_END_TIME, DEFAULT_REFLECTION_PROTECTION_END_TIME
+            ),
         )
 
 
@@ -187,6 +213,28 @@ class CoverController:
         await self._set_cover_tilt(config.entity_id, tilt_percent)
         return True
 
+    def _is_reflection_protection_active(self, config: CoverConfig) -> bool:
+        """
+        Check if reflection protection should be active now.
+
+        Args:
+            config: The cover configuration.
+
+        Returns:
+            True if reflection protection is enabled and current time is within the window.
+        """
+        if not config.reflection_protection_enabled:
+            return False
+
+        now = dt_util.now().time()
+        start = datetime.strptime(config.reflection_protection_start_time, "%H:%M").time()
+        end = datetime.strptime(config.reflection_protection_end_time, "%H:%M").time()
+
+        # Handle overnight windows (e.g., 22:00 - 06:00)
+        if start <= end:
+            return start <= now <= end
+        return now >= start or now <= end
+
     async def _handle_no_sun(self, config: CoverConfig) -> bool:
         """
         Handle the case when sun is below horizon or behind facade.
@@ -197,6 +245,16 @@ class CoverController:
         Returns:
             True if action was taken, False otherwise.
         """
+        # Check reflection protection first
+        if self._is_reflection_protection_active(config):
+            LOGGER.debug(
+                "No sun + reflection protection active for %s, setting min tilt %d%%",
+                config.entity_id,
+                config.reflection_protection_min_tilt,
+            )
+            await self._set_cover_tilt(config.entity_id, float(config.reflection_protection_min_tilt))
+            return True
+
         behavior = config.no_sun_behavior
 
         if behavior == "keep_last":
