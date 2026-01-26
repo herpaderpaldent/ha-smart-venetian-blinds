@@ -14,20 +14,20 @@ from custom_components.smart_venetian_blinds.const import (
     CONF_MANUAL_CLOSE_THRESHOLD,
     CONF_MAX_ANGLE,
     CONF_MIN_ANGLE,
+    CONF_MINIMUM_TILT_CHANGE,
     CONF_NO_SUN_BEHAVIOR,
     CONF_NO_SUN_POSITION,
     CONF_RESPECT_MANUAL_CLOSE,
-    CONF_TILT_ONLY_WHEN_DRIVEN,
     DEFAULT_COVER_ENABLED,
     DEFAULT_DRIVE_POSITION,
     DEFAULT_INVERT_TILT,
     DEFAULT_MANUAL_CLOSE_THRESHOLD,
     DEFAULT_MAX_ANGLE,
     DEFAULT_MIN_ANGLE,
+    DEFAULT_MINIMUM_TILT_CHANGE,
     DEFAULT_NO_SUN_BEHAVIOR,
     DEFAULT_NO_SUN_POSITION,
     DEFAULT_RESPECT_MANUAL_CLOSE,
-    DEFAULT_TILT_ONLY_WHEN_DRIVEN,
 )
 from custom_components.smart_venetian_blinds.cover_control.controller import CoverConfig, CoverController
 from custom_components.smart_venetian_blinds.sun.math import SlatCalculationResult
@@ -51,7 +51,7 @@ class TestCoverConfigFromSubentry:
             CONF_NO_SUN_POSITION: 25,
             CONF_RESPECT_MANUAL_CLOSE: False,
             CONF_MANUAL_CLOSE_THRESHOLD: 20,
-            CONF_TILT_ONLY_WHEN_DRIVEN: False,
+            CONF_MINIMUM_TILT_CHANGE: 10,
             CONF_COVER_ENABLED: False,
         }
 
@@ -66,7 +66,7 @@ class TestCoverConfigFromSubentry:
         assert config.no_sun_position == 25
         assert config.respect_manual_close is False
         assert config.manual_close_threshold == 20
-        assert config.tilt_only_when_driven is False
+        assert config.minimum_tilt_change == 10
         assert config.enabled is False
 
     def test_uses_defaults_for_missing(self) -> None:
@@ -87,7 +87,7 @@ class TestCoverConfigFromSubentry:
         assert config.no_sun_position == DEFAULT_NO_SUN_POSITION
         assert config.respect_manual_close == DEFAULT_RESPECT_MANUAL_CLOSE
         assert config.manual_close_threshold == DEFAULT_MANUAL_CLOSE_THRESHOLD
-        assert config.tilt_only_when_driven == DEFAULT_TILT_ONLY_WHEN_DRIVEN
+        assert config.minimum_tilt_change == DEFAULT_MINIMUM_TILT_CHANGE
         assert config.enabled == DEFAULT_COVER_ENABLED
 
 
@@ -231,7 +231,7 @@ class TestHandleNoSun:
             no_sun_position=50,
             respect_manual_close=True,
             manual_close_threshold=30,
-            tilt_only_when_driven=True,
+            minimum_tilt_change=5,
             enabled=True,
         )
 
@@ -330,7 +330,7 @@ class TestApplyCalculation:
             no_sun_position=50,
             respect_manual_close=True,
             manual_close_threshold=30,  # Threshold is 30%
-            tilt_only_when_driven=False,
+            minimum_tilt_change=0,  # No minimum change required
             enabled=True,
         )
 
@@ -347,7 +347,7 @@ class TestApplyCalculation:
         """Ignores manual close when respect_manual_close is False."""
         mock_hass.states.get.return_value = create_mock_state(
             state="closed",
-            attributes={"current_position": 20},  # Below threshold
+            attributes={"current_position": 20, "current_tilt_position": 0},  # Below threshold
         )
         mock_hass.services.async_call = AsyncMock()
         controller = CoverController(mock_hass)
@@ -362,7 +362,7 @@ class TestApplyCalculation:
             no_sun_position=50,
             respect_manual_close=False,  # Disabled
             manual_close_threshold=30,
-            tilt_only_when_driven=False,
+            minimum_tilt_change=0,  # No minimum change required
             enabled=True,
         )
 
@@ -372,22 +372,22 @@ class TestApplyCalculation:
         assert result is True
 
     @pytest.mark.asyncio
-    async def test_tilt_only_when_driven_skips_tilt(
+    async def test_minimum_tilt_change_skips_small_changes(
         self,
         mock_hass: MagicMock,
         calculation_result_direct_sun: SlatCalculationResult,
     ) -> None:
-        """Skips tilt when already at position and tilt_only_when_driven is True."""
+        """Skips tilt when change is below minimum threshold."""
         mock_hass.states.get.return_value = create_mock_state(
             state="open",
-            attributes={"current_position": 100},  # Already at drive position
+            attributes={"current_position": 100, "current_tilt_position": 48},  # Close to target 50%
         )
         mock_hass.services.async_call = AsyncMock()
         controller = CoverController(mock_hass)
 
         config = CoverConfig(
             entity_id="cover.test",
-            drive_position=100,  # Same as current position
+            drive_position=100,
             min_angle=0,
             max_angle=90,
             invert_tilt=False,
@@ -395,13 +395,17 @@ class TestApplyCalculation:
             no_sun_position=50,
             respect_manual_close=False,
             manual_close_threshold=30,
-            tilt_only_when_driven=True,  # Only tilt after driving
+            minimum_tilt_change=5,  # Require at least 5% change
             enabled=True,
         )
 
+        # calculation_result_direct_sun has slat_tilt_percent=50.0
+        # Current tilt is 48%, difference is 2% which is < 5% threshold
         result = await controller.apply_calculation(config, calculation_result_direct_sun)
 
         assert result is False
+        # No tilt service should be called
+        mock_hass.services.async_call.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_applies_tilt_with_inversion(
@@ -412,7 +416,7 @@ class TestApplyCalculation:
         """Applies tilt with inversion."""
         mock_hass.states.get.return_value = create_mock_state(
             state="open",
-            attributes={"current_position": 100},
+            attributes={"current_position": 100, "current_tilt_position": 0},
         )
         mock_hass.services.async_call = AsyncMock()
         controller = CoverController(mock_hass)
@@ -427,7 +431,7 @@ class TestApplyCalculation:
             no_sun_position=50,
             respect_manual_close=False,
             manual_close_threshold=30,
-            tilt_only_when_driven=False,
+            minimum_tilt_change=0,  # No minimum change required
             enabled=True,
         )
 

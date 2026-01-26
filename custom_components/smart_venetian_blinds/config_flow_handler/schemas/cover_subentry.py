@@ -20,20 +20,20 @@ from custom_components.smart_venetian_blinds.const import (
     CONF_MANUAL_CLOSE_THRESHOLD,
     CONF_MAX_ANGLE,
     CONF_MIN_ANGLE,
+    CONF_MINIMUM_TILT_CHANGE,
     CONF_NO_SUN_BEHAVIOR,
     CONF_NO_SUN_POSITION,
     CONF_RESPECT_MANUAL_CLOSE,
-    CONF_TILT_ONLY_WHEN_DRIVEN,
     DEFAULT_COVER_ENABLED,
     DEFAULT_DRIVE_POSITION,
     DEFAULT_INVERT_TILT,
     DEFAULT_MANUAL_CLOSE_THRESHOLD,
     DEFAULT_MAX_ANGLE,
     DEFAULT_MIN_ANGLE,
+    DEFAULT_MINIMUM_TILT_CHANGE,
     DEFAULT_NO_SUN_BEHAVIOR,
     DEFAULT_NO_SUN_POSITION,
     DEFAULT_RESPECT_MANUAL_CLOSE,
-    DEFAULT_TILT_ONLY_WHEN_DRIVEN,
 )
 from homeassistant.helpers import selector
 
@@ -161,9 +161,17 @@ def get_cover_subentry_schema(
                 ),
             ),
             vol.Required(
-                CONF_TILT_ONLY_WHEN_DRIVEN,
-                default=defaults.get(CONF_TILT_ONLY_WHEN_DRIVEN, DEFAULT_TILT_ONLY_WHEN_DRIVEN),
-            ): selector.BooleanSelector(),
+                CONF_MINIMUM_TILT_CHANGE,
+                default=defaults.get(CONF_MINIMUM_TILT_CHANGE, DEFAULT_MINIMUM_TILT_CHANGE),
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0,
+                    max=20,
+                    step=1,
+                    unit_of_measurement="%",
+                    mode=selector.NumberSelectorMode.SLIDER,
+                ),
+            ),
             vol.Required(
                 CONF_COVER_ENABLED,
                 default=defaults.get(CONF_COVER_ENABLED, DEFAULT_COVER_ENABLED),

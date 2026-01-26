@@ -60,7 +60,7 @@
             "no_sun_position_percent": "No-sun position",
             "respect_manual_close": "Respect manual close",
             "manual_close_threshold_percent": "Manual close threshold",
-            "tilt_only_when_driven": "Tilt only when driven",
+            "minimum_tilt_change_percent": "Minimum tilt change",
             "enabled": "Enabled"
           },
           "data_description": {
@@ -74,7 +74,7 @@
             "no_sun_position_percent": "Tilt position when using 'set_to_percent' behavior",
             "respect_manual_close": "Don't disturb blinds that appear manually closed",
             "manual_close_threshold_percent": "Consider blinds manually closed if below this position",
-            "tilt_only_when_driven": "Only apply tilt if cover position changed",
+            "minimum_tilt_change_percent": "Only adjust tilt if change exceeds this threshold (reduces motor wear)",
             "enabled": "Enable automatic control for this cover"
           }
         },
@@ -91,7 +91,7 @@
             "no_sun_position_percent": "No-sun position",
             "respect_manual_close": "Respect manual close",
             "manual_close_threshold_percent": "Manual close threshold",
-            "tilt_only_when_driven": "Tilt only when driven",
+            "minimum_tilt_change_percent": "Minimum tilt change",
             "enabled": "Enabled"
           },
           "data_description": {
@@ -104,7 +104,7 @@
             "no_sun_position_percent": "Tilt position when using 'set_to_percent' behavior",
             "respect_manual_close": "Don't disturb blinds that appear manually closed",
             "manual_close_threshold_percent": "Consider blinds manually closed if below this position",
-            "tilt_only_when_driven": "Only apply tilt if cover position changed",
+            "minimum_tilt_change_percent": "Only adjust tilt if change exceeds this threshold (reduces motor wear)",
             "enabled": "Enable automatic control for this cover"
           }
         }

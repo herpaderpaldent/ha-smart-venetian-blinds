@@ -18,20 +18,20 @@ from custom_components.smart_venetian_blinds.const import (
     CONF_MANUAL_CLOSE_THRESHOLD,
     CONF_MAX_ANGLE,
     CONF_MIN_ANGLE,
+    CONF_MINIMUM_TILT_CHANGE,
     CONF_NO_SUN_BEHAVIOR,
     CONF_NO_SUN_POSITION,
     CONF_RESPECT_MANUAL_CLOSE,
-    CONF_TILT_ONLY_WHEN_DRIVEN,
     DEFAULT_COVER_ENABLED,
     DEFAULT_DRIVE_POSITION,
     DEFAULT_INVERT_TILT,
     DEFAULT_MANUAL_CLOSE_THRESHOLD,
     DEFAULT_MAX_ANGLE,
     DEFAULT_MIN_ANGLE,
+    DEFAULT_MINIMUM_TILT_CHANGE,
     DEFAULT_NO_SUN_BEHAVIOR,
     DEFAULT_NO_SUN_POSITION,
     DEFAULT_RESPECT_MANUAL_CLOSE,
-    DEFAULT_TILT_ONLY_WHEN_DRIVEN,
     LOGGER,
 )
 from custom_components.smart_venetian_blinds.sun.math import apply_tilt_inversion
@@ -57,7 +57,7 @@ class CoverConfig:
     no_sun_position: int
     respect_manual_close: bool
     manual_close_threshold: int
-    tilt_only_when_driven: bool
+    minimum_tilt_change: int
     enabled: bool
 
     @classmethod
@@ -74,7 +74,7 @@ class CoverConfig:
             no_sun_position=data.get(CONF_NO_SUN_POSITION, DEFAULT_NO_SUN_POSITION),
             respect_manual_close=data.get(CONF_RESPECT_MANUAL_CLOSE, DEFAULT_RESPECT_MANUAL_CLOSE),
             manual_close_threshold=data.get(CONF_MANUAL_CLOSE_THRESHOLD, DEFAULT_MANUAL_CLOSE_THRESHOLD),
-            tilt_only_when_driven=data.get(CONF_TILT_ONLY_WHEN_DRIVEN, DEFAULT_TILT_ONLY_WHEN_DRIVEN),
+            minimum_tilt_change=data.get(CONF_MINIMUM_TILT_CHANGE, DEFAULT_MINIMUM_TILT_CHANGE),
             enabled=data.get(CONF_COVER_ENABLED, DEFAULT_COVER_ENABLED),
         )
 
@@ -147,7 +147,6 @@ class CoverController:
                 return False
 
         # Drive to position if needed
-        position_changed = False
         if abs(current_position - config.drive_position) > self.POSITION_TOLERANCE_PERCENT:
             LOGGER.debug(
                 "Driving %s from %d%% to %d%%",
@@ -157,21 +156,25 @@ class CoverController:
             )
             await self._set_cover_position(config.entity_id, config.drive_position)
             await self._wait_for_position(config.entity_id, config.drive_position)
-            position_changed = True
 
-        # Skip tilt if position didn't change and tilt_only_when_driven is set
-        if config.tilt_only_when_driven and not position_changed:
-            LOGGER.debug(
-                "Cover %s position unchanged, tilt_only_when_driven is set, skipping tilt",
-                config.entity_id,
-            )
-            return False
-
-        # Calculate and apply tilt
+        # Calculate target tilt
         tilt_percent = apply_tilt_inversion(
             calculation.slat_tilt_percent,
             config.invert_tilt,
         )
+
+        # Check if tilt change is significant enough
+        current_tilt = self._get_cover_tilt(config.entity_id)
+        if current_tilt is not None:
+            tilt_change = abs(tilt_percent - current_tilt)
+            if tilt_change < config.minimum_tilt_change:
+                LOGGER.debug(
+                    "Cover %s tilt change %.1f%% is below threshold %d%%, skipping",
+                    config.entity_id,
+                    tilt_change,
+                    config.minimum_tilt_change,
+                )
+                return False
 
         LOGGER.debug(
             "Setting tilt for %s to %.1f%% (angle: %.1f°, inverted: %s)",

@@ -90,7 +90,7 @@ def cover_config_default() -> CoverConfig:
         no_sun_position=50,
         respect_manual_close=True,
         manual_close_threshold=30,
-        tilt_only_when_driven=True,
+        minimum_tilt_change=5,
         enabled=True,
     )
 
@@ -108,7 +108,7 @@ def cover_config_inverted() -> CoverConfig:
         no_sun_position=50,
         respect_manual_close=True,
         manual_close_threshold=30,
-        tilt_only_when_driven=True,
+        minimum_tilt_change=5,
         enabled=True,
     )
 
@@ -126,7 +126,7 @@ def cover_config_disabled() -> CoverConfig:
         no_sun_position=50,
         respect_manual_close=True,
         manual_close_threshold=30,
-        tilt_only_when_driven=True,
+        minimum_tilt_change=5,
         enabled=False,
     )
 
@@ -144,7 +144,7 @@ def cover_config_no_sun_open() -> CoverConfig:
         no_sun_position=50,
         respect_manual_close=True,
         manual_close_threshold=30,
-        tilt_only_when_driven=True,
+        minimum_tilt_change=5,
         enabled=True,
     )
 
@@ -162,7 +162,7 @@ def cover_config_no_sun_close() -> CoverConfig:
         no_sun_position=50,
         respect_manual_close=True,
         manual_close_threshold=30,
-        tilt_only_when_driven=True,
+        minimum_tilt_change=5,
         enabled=True,
     )
 
@@ -180,7 +180,7 @@ def cover_config_no_sun_set_percent() -> CoverConfig:
         no_sun_position=75,
         respect_manual_close=True,
         manual_close_threshold=30,
-        tilt_only_when_driven=True,
+        minimum_tilt_change=5,
         enabled=True,
     )
 
