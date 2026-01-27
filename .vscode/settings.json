@@ -1,14 +1,1 @@
-{
-  "python-envs.pythonProjects": [
-    {
-      "path": "custom_components/smart_venetian_blinds/sun",
-      "envManager": "ms-python.python:venv",
-      "packageManager": "ms-python.python:pip"
-    },
-    {
-      "path": "custom_components",
-      "envManager": "ms-python.python:venv",
-      "packageManager": "ms-python.python:pip"
-    }
-  ]
-}
+{}

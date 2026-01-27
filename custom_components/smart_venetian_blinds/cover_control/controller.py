@@ -129,20 +129,20 @@ class CoverController:
         calculation: SlatCalculationResult | None,
     ) -> bool:
         """
-        Apply calculated tilt to a cover.
+            Apply calculated tilt to a cover.
 
-        Implements the drive-then-tilt sequence:
-        1. Check if cover is enabled
+            Implements the drive-then-tilt sequence:
+            1. Check if cover is enabled
         2. Check manual close threshold
-        3. Drive to position (if needed)
-        4. Apply tilt
+            3. Drive to position (if needed)
+            4. Apply tilt
 
         Args:
-            config: The cover configuration.
-            calculation: The slat calculation result (None if sun below horizon).
+                config: The cover configuration.
+                calculation: The slat calculation result (None if sun below horizon).
 
         Returns:
-            True if tilt was applied, False if skipped.
+                True if tilt was applied, False if skipped.
         """
         if not config.enabled:
             LOGGER.debug("Cover %s is disabled, skipping", config.entity_id)
@@ -161,13 +161,14 @@ class CoverController:
             )
             return False
 
-        # Check manual close threshold
+        # Check manual close threshold (based on TILT, not position)
         if config.respect_manual_close:
-            if current_position < config.manual_close_threshold:
+            current_tilt = self._get_cover_tilt(config.entity_id)
+            if current_tilt is not None and current_tilt < config.manual_close_threshold:
                 LOGGER.debug(
-                    "Cover %s at %d%% (below threshold %d%%), respecting manual close",
+                    "Cover %s tilt at %.1f%% (below threshold %d%%), respecting manual close",
                     config.entity_id,
-                    current_position,
+                    current_tilt,
                     config.manual_close_threshold,
                 )
                 return False

@@ -320,10 +320,10 @@ class TestApplyCalculation:
         mock_hass: MagicMock,
         calculation_result_direct_sun: SlatCalculationResult,
     ) -> None:
-        """Respects manual close when position below threshold."""
+        """Respects manual close when tilt below threshold (sleep mode)."""
         mock_hass.states.get.return_value = create_mock_state(
             state="closed",
-            attributes={"current_position": 20},  # Below 30% threshold
+            attributes={"current_position": 20, "current_tilt_position": 2},  # Tilt below 5% threshold
         )
         mock_hass.services.async_call = AsyncMock()
         controller = CoverController(mock_hass)
@@ -337,7 +337,7 @@ class TestApplyCalculation:
             no_sun_behavior="keep_last",
             no_sun_position=50,
             respect_manual_close=True,
-            manual_close_threshold=30,  # Threshold is 30%
+            manual_close_threshold=5,  # Threshold is 5% (tilt-based)
             minimum_tilt_change=0,  # No minimum change required
             enabled=True,
             reflection_protection_enabled=False,

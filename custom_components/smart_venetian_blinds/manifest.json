@@ -5,6 +5,7 @@
     "@herpaderpaldent"
   ],
   "config_flow": true,
+  "dependencies": ["sun"],
   "documentation": "https://github.com/herpaderpaldent/ha-smart-venetian-blinds",
   "integration_type": "service",
   "iot_class": "calculated",

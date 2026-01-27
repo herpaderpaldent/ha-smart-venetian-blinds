@@ -43,14 +43,16 @@ script/test --cov-html    # With coverage report
 ## Architecture
 
 ### Data Flow
-```
+
+```bash
 Sun Entity Changes → SunStateListener → Coordinator → CoverController → Cover Entities
                                               ↓
                                     Sensor Entities (calculated angles)
 ```
 
 ### Package Structure
-```
+
+```bash
 custom_components/smart_venetian_blinds/
 ├── __init__.py              # Entry setup, sun listener, event-driven cover control
 ├── const.py                 # All constants and configuration keys
@@ -78,11 +80,13 @@ custom_components/smart_venetian_blinds/
 ### Key Concepts
 
 **Window Groups (Config Entries):** Each config entry is a window group with:
+
 - Shared facade azimuth (compass direction the window faces)
 - Slat geometry (width, spacing)
 - Update throttling settings
 
 **Covers (Subentries):** Each subentry is an individual cover with:
+
 - Target cover entity ID
 - Drive position (where to position before tilting)
 - Tilt inversion settings
@@ -90,6 +94,7 @@ custom_components/smart_venetian_blinds/
 - No-sun behavior configuration
 
 **Event-Driven Updates:** The integration listens for `sun.sun` or `sensor.sun_solar_*` state changes. When sun moves, it:
+
 1. Updates coordinator data (sensor values)
 2. Checks `auto_control_enabled` flag
 3. If enabled, applies calculated tilt to all covers
@@ -107,6 +112,7 @@ custom_components/smart_venetian_blinds/
 ## Code Quality
 
 Validation tools are pre-configured:
+
 - **Ruff** for linting/formatting
 - **Pyright** for type checking (basic mode)
 - **cSpell** for spell checking

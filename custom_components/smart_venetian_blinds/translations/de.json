@@ -1,0 +1,219 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Fenstergruppe erstellen",
+        "description": "Konfigurieren Sie eine Fenstergruppe mit gemeinsamer Fassadenausrichtung und Lamellengeometrie. Nach der Einrichtung können Sie Cover zu dieser Gruppe hinzufügen.",
+        "data": {
+          "name": "Gruppenname",
+          "facade_azimuth_deg": "Fassaden-Azimut",
+          "slat_width_mm": "Lamellenbreite",
+          "slat_spacing_mm": "Lamellenabstand"
+        },
+        "data_description": {
+          "name": "Ein beschreibender Name für diese Fenstergruppe (z.B. 'Südfenster')",
+          "facade_azimuth_deg": "Richtung, in die das Fenster zeigt (0°=Nord, 90°=Ost, 180°=Süd, 270°=West)",
+          "slat_width_mm": "Breite jeder Lamelle in Millimetern",
+          "slat_spacing_mm": "Abstand zwischen den Lamellen in Millimetern"
+        }
+      },
+      "reconfigure": {
+        "title": "Fenstergruppe neu konfigurieren",
+        "description": "Aktualisieren Sie die Fassadenausrichtung und Lamellengeometrie für diese Fenstergruppe.",
+        "data": {
+          "facade_azimuth_deg": "Fassaden-Azimut",
+          "slat_width_mm": "Lamellenbreite",
+          "slat_spacing_mm": "Lamellenabstand"
+        },
+        "data_description": {
+          "facade_azimuth_deg": "Richtung, in die das Fenster zeigt (0°=Nord, 90°=Ost, 180°=Süd, 270°=West)",
+          "slat_width_mm": "Breite jeder Lamelle in Millimetern",
+          "slat_spacing_mm": "Abstand zwischen den Lamellen in Millimetern"
+        }
+      }
+    },
+    "error": {
+      "name_required": "Bitte geben Sie einen Gruppennamen ein.",
+      "unknown": "Ein unbekannter Fehler ist aufgetreten."
+    },
+    "abort": {
+      "already_configured": "Eine Fenstergruppe mit diesem Namen existiert bereits."
+    }
+  },
+  "config_subentries": {
+    "cover": {
+      "entry_type": "Abdeckung",
+      "initiate_flow": {
+        "user": "Abdeckung hinzufügen"
+      },
+      "step": {
+        "user": {
+          "title": "Abdeckung & Neigungseinstellungen",
+          "description": "Wählen Sie eine Abdeckungs-Entität und konfigurieren Sie das Neigungsverhalten.",
+          "data": {
+            "cover_entity_id": "Abdeckungs-Entität",
+            "name": "Benutzerdefinierter Name (optional)",
+            "drive_position": "Fahrposition",
+            "min_angle_deg": "Minimaler Winkel",
+            "max_angle_deg": "Maximaler Winkel",
+            "invert_tilt_percent": "Neigung invertieren",
+            "minimum_tilt_change_percent": "Minimale Neigungsänderung",
+            "no_sun_behavior": "Verhalten bei Sonne hinter Fassade",
+            "enabled": "Aktiviert"
+          },
+          "data_description": {
+            "cover_entity_id": "Die zu steuernde Abdeckungs-Entität",
+            "name": "Optionaler benutzerdefinierter Name für diese Abdeckung",
+            "drive_position": "Position, zu der die Abdeckung vor dem Neigen fährt (0%=geschlossen, 100%=offen)",
+            "min_angle_deg": "Minimale mechanische Neigungswinkelbeschränkung",
+            "max_angle_deg": "Maximale mechanische Neigungswinkelbeschränkung",
+            "invert_tilt_percent": "Neigungsprozent invertieren, falls die Abdeckung umgekehrte Semantik verwendet",
+            "minimum_tilt_change_percent": "Neigung nur anpassen, wenn die Änderung diesen Schwellenwert überschreitet (reduziert Motorverschleiß)",
+            "no_sun_behavior": "Was tun, wenn die Sonne unter dem Horizont oder hinter der Fassade ist",
+            "enabled": "Automatische Steuerung für diese Abdeckung aktivieren"
+          }
+        },
+        "no_sun_position": {
+          "title": "Position ohne Sonne",
+          "description": "Legen Sie die Neigungsposition fest, wenn die Sonne unter dem Horizont oder hinter der Fassade ist.",
+          "data": {
+            "no_sun_position_percent": "Neigungsposition"
+          },
+          "data_description": {
+            "no_sun_position_percent": "Neigungsprozent bei keinem direkten Sonnenlicht (0%=geschlossen, 100%=offen)"
+          }
+        },
+        "protection": {
+          "title": "Schutzoptionen",
+          "description": "Konfigurieren Sie Reflexionsschutz und manuelle Schließerkennung.",
+          "data": {
+            "reflection_protection_enabled": "Reflexionsschutz aktivieren",
+            "reflection_protection_min_tilt": "Minimale Neigung bei Reflexionsschutz",
+            "reflection_protection_start_time": "Startzeit Reflexionsschutz",
+            "reflection_protection_end_time": "Endzeit Reflexionsschutz",
+            "respect_manual_close": "Manuelles Schließen respektieren",
+            "manual_close_threshold_percent": "Schwellenwert für manuelles Schließen"
+          },
+          "data_description": {
+            "reflection_protection_enabled": "Minimale Neigung beibehalten, wenn Sonne hinter Fassade ist, um Blendung durch reflektiertes Licht zu verhindern (z.B. von Balkonen)",
+            "reflection_protection_min_tilt": "Minimale Neigung, die bei aktivem Reflexionsschutz beibehalten wird",
+            "reflection_protection_start_time": "Beginn des Zeitfensters für Reflexionsschutz",
+            "reflection_protection_end_time": "Ende des Zeitfensters für Reflexionsschutz",
+            "respect_manual_close": "Jalousien nicht stören, die manuell geschlossen wurden",
+            "manual_close_threshold_percent": "Auto-Steuerung überspringen, wenn Neigung unter diesem Prozent liegt (Lamellen geschlossen = Schlafmodus)"
+          }
+        },
+        "reconfigure": {
+          "title": "Abdeckung & Neigungseinstellungen neu konfigurieren",
+          "description": "Aktualisieren Sie das Neigungsverhalten der Abdeckung.",
+          "data": {
+            "name": "Benutzerdefinierter Name (optional)",
+            "drive_position": "Fahrposition",
+            "min_angle_deg": "Minimaler Winkel",
+            "max_angle_deg": "Maximaler Winkel",
+            "invert_tilt_percent": "Neigung invertieren",
+            "minimum_tilt_change_percent": "Minimale Neigungsänderung",
+            "no_sun_behavior": "Verhalten bei Sonne hinter Fassade",
+            "enabled": "Aktiviert"
+          },
+          "data_description": {
+            "name": "Optionaler benutzerdefinierter Name für diese Abdeckung",
+            "drive_position": "Position, zu der die Abdeckung vor dem Neigen fährt (0%=geschlossen, 100%=offen)",
+            "min_angle_deg": "Minimale mechanische Neigungswinkelbeschränkung",
+            "max_angle_deg": "Maximale mechanische Neigungswinkelbeschränkung",
+            "invert_tilt_percent": "Neigungsprozent invertieren, falls die Abdeckung umgekehrte Semantik verwendet",
+            "minimum_tilt_change_percent": "Neigung nur anpassen, wenn die Änderung diesen Schwellenwert überschreitet (reduziert Motorverschleiß)",
+            "no_sun_behavior": "Was tun, wenn die Sonne unter dem Horizont oder hinter der Fassade ist",
+            "enabled": "Automatische Steuerung für diese Abdeckung aktivieren"
+          }
+        },
+        "reconfigure_no_sun_position": {
+          "title": "Position ohne Sonne",
+          "description": "Legen Sie die Neigungsposition fest, wenn die Sonne unter dem Horizont oder hinter der Fassade ist.",
+          "data": {
+            "no_sun_position_percent": "Neigungsposition"
+          },
+          "data_description": {
+            "no_sun_position_percent": "Neigungsprozent bei keinem direkten Sonnenlicht (0%=geschlossen, 100%=offen)"
+          }
+        },
+        "reconfigure_protection": {
+          "title": "Schutzoptionen",
+          "description": "Konfigurieren Sie Reflexionsschutz und manuelle Schließerkennung.",
+          "data": {
+            "reflection_protection_enabled": "Reflexionsschutz aktivieren",
+            "reflection_protection_min_tilt": "Minimale Neigung bei Reflexionsschutz",
+            "reflection_protection_start_time": "Startzeit Reflexionsschutz",
+            "reflection_protection_end_time": "Endzeit Reflexionsschutz",
+            "respect_manual_close": "Manuelles Schließen respektieren",
+            "manual_close_threshold_percent": "Schwellenwert für manuelles Schließen"
+          },
+          "data_description": {
+            "reflection_protection_enabled": "Minimale Neigung beibehalten, wenn Sonne hinter Fassade ist, um Blendung durch reflektiertes Licht zu verhindern (z.B. von Balkonen)",
+            "reflection_protection_min_tilt": "Minimale Neigung, die bei aktivem Reflexionsschutz beibehalten wird",
+            "reflection_protection_start_time": "Beginn des Zeitfensters für Reflexionsschutz",
+            "reflection_protection_end_time": "Ende des Zeitfensters für Reflexionsschutz",
+            "respect_manual_close": "Jalousien nicht stören, die manuell geschlossen wurden",
+            "manual_close_threshold_percent": "Auto-Steuerung überspringen, wenn Neigung unter diesem Prozent liegt (Lamellen geschlossen = Schlafmodus)"
+          }
+        }
+      },
+      "error": {
+        "cover_already_added": "Diese Abdeckung wurde bereits zu dieser Gruppe hinzugefügt."
+      },
+      "abort": {
+        "reconfigure_successful": "Abdeckungskonfiguration aktualisiert."
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Optionen konfigurieren",
+        "description": "Update-Drosselungseinstellungen anpassen.",
+        "data": {
+          "change_threshold_deg": "Änderungsschwellenwert",
+          "min_update_interval_sec": "Minimales Update-Intervall"
+        },
+        "data_description": {
+          "change_threshold_deg": "Minimale Winkeländerung (in Grad), um ein Update auszulösen",
+          "min_update_interval_sec": "Minimale Zeit (in Sekunden) zwischen Abdeckungs-Updates"
+        }
+      }
+    }
+  },
+  "selector": {
+    "no_sun_behavior": {
+      "options": {
+        "keep_last": "Letzte Position beibehalten",
+        "open": "Vollständig öffnen",
+        "close": "Vollständig schließen",
+        "set_to_percent": "Auf bestimmten Prozentsatz setzen"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "slat_angle": {
+        "name": "Lamellenwinkel"
+      },
+      "slat_tilt": {
+        "name": "Lamellenneigung"
+      },
+      "profile_angle": {
+        "name": "Profilwinkel"
+      }
+    },
+    "switch": {
+      "auto_control": {
+        "name": "Automatische Steuerung"
+      }
+    }
+  },
+  "services": {
+    "apply_now": {
+      "name": "Jetzt anwenden",
+      "description": "Sofortige Neuberechnung und Anwendung der Lamellenwinkel auf alle Abdeckungen erzwingen, unter Ignorierung der Drosselungsregeln."
+    }
+  }
+}

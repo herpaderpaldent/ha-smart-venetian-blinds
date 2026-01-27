@@ -100,7 +100,7 @@
             "reflection_protection_start_time": "Start of the time window for reflection protection",
             "reflection_protection_end_time": "End of the time window for reflection protection",
             "respect_manual_close": "Don't disturb blinds that appear manually closed",
-            "manual_close_threshold_percent": "Consider blinds manually closed if below this position"
+            "manual_close_threshold_percent": "Skip auto-control if tilt is below this percent (slats closed = sleep mode)"
           }
         },
         "reconfigure": {
@@ -154,7 +154,7 @@
             "reflection_protection_start_time": "Start of the time window for reflection protection",
             "reflection_protection_end_time": "End of the time window for reflection protection",
             "respect_manual_close": "Don't disturb blinds that appear manually closed",
-            "manual_close_threshold_percent": "Consider blinds manually closed if below this position"
+            "manual_close_threshold_percent": "Skip auto-control if tilt is below this percent (slats closed = sleep mode)"
           }
         }
       },
