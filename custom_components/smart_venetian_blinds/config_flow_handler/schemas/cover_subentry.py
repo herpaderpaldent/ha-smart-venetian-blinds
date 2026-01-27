@@ -46,11 +46,11 @@ from custom_components.smart_venetian_blinds.const import (
 )
 from homeassistant.helpers import selector
 
-NO_SUN_BEHAVIOR_OPTIONS = [
-    selector.SelectOptionDict(value="keep_last", label="Keep last position"),
-    selector.SelectOptionDict(value="open", label="Fully open"),
-    selector.SelectOptionDict(value="close", label="Fully close"),
-    selector.SelectOptionDict(value="set_to_percent", label="Set to specific percent"),
+NO_SUN_BEHAVIOR_OPTIONS: list[str] = [
+    "keep_last",
+    "open",
+    "close",
+    "set_to_percent",
 ]
 
 
