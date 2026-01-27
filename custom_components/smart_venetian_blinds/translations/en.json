@@ -48,8 +48,8 @@
       },
       "step": {
         "user": {
-          "title": "Add Cover to Group",
-          "description": "Select a cover entity and configure its behavior.",
+          "title": "Cover & Tilt Settings",
+          "description": "Select a cover entity and configure its tilt behavior.",
           "data": {
             "cover_entity_id": "Cover entity",
             "name": "Custom name (optional)",
@@ -57,15 +57,8 @@
             "min_angle_deg": "Minimum angle",
             "max_angle_deg": "Maximum angle",
             "invert_tilt_percent": "Invert tilt",
-            "no_sun_behavior": "Behavior when sun is behind facade",
-            "no_sun_position_percent": "No-sun position",
-            "reflection_protection_enabled": "Reflection protection",
-            "reflection_protection_min_tilt": "Reflection protection minimum tilt",
-            "reflection_protection_start_time": "Reflection protection start time",
-            "reflection_protection_end_time": "Reflection protection end time",
-            "respect_manual_close": "Respect manual close",
-            "manual_close_threshold_percent": "Manual close threshold",
             "minimum_tilt_change_percent": "Minimum tilt change",
+            "no_sun_behavior": "Behavior when sun is behind facade",
             "enabled": "Enabled"
           },
           "data_description": {
@@ -75,36 +68,52 @@
             "min_angle_deg": "Minimum mechanical tilt angle constraint",
             "max_angle_deg": "Maximum mechanical tilt angle constraint",
             "invert_tilt_percent": "Invert tilt percent if cover uses reversed semantics",
+            "minimum_tilt_change_percent": "Only adjust tilt if change exceeds this threshold (reduces motor wear)",
             "no_sun_behavior": "What to do when sun is below horizon or behind facade",
-            "no_sun_position_percent": "Tilt position when using 'set_to_percent' behavior",
+            "enabled": "Enable automatic control for this cover"
+          }
+        },
+        "no_sun_position": {
+          "title": "No-Sun Position",
+          "description": "Set the tilt position when sun is below horizon or behind facade.",
+          "data": {
+            "no_sun_position_percent": "Tilt position"
+          },
+          "data_description": {
+            "no_sun_position_percent": "Tilt percent when no direct sunlight (0%=closed, 100%=open)"
+          }
+        },
+        "protection": {
+          "title": "Protection Options",
+          "description": "Configure reflection protection and manual close detection.",
+          "data": {
+            "reflection_protection_enabled": "Enable reflection protection",
+            "reflection_protection_min_tilt": "Reflection protection minimum tilt",
+            "reflection_protection_start_time": "Reflection protection start time",
+            "reflection_protection_end_time": "Reflection protection end time",
+            "respect_manual_close": "Respect manual close",
+            "manual_close_threshold_percent": "Manual close threshold"
+          },
+          "data_description": {
             "reflection_protection_enabled": "Keep minimum tilt when sun is behind facade to prevent glare from reflected light (e.g., from balconies)",
             "reflection_protection_min_tilt": "Minimum tilt to maintain when reflection protection is active",
             "reflection_protection_start_time": "Start of the time window for reflection protection",
             "reflection_protection_end_time": "End of the time window for reflection protection",
             "respect_manual_close": "Don't disturb blinds that appear manually closed",
-            "manual_close_threshold_percent": "Consider blinds manually closed if below this position",
-            "minimum_tilt_change_percent": "Only adjust tilt if change exceeds this threshold (reduces motor wear)",
-            "enabled": "Enable automatic control for this cover"
+            "manual_close_threshold_percent": "Consider blinds manually closed if below this position"
           }
         },
         "reconfigure": {
-          "title": "Reconfigure Cover",
-          "description": "Update the cover configuration.",
+          "title": "Reconfigure Cover & Tilt Settings",
+          "description": "Update the cover tilt behavior.",
           "data": {
             "name": "Custom name (optional)",
             "drive_position": "Drive position",
             "min_angle_deg": "Minimum angle",
             "max_angle_deg": "Maximum angle",
             "invert_tilt_percent": "Invert tilt",
-            "no_sun_behavior": "Behavior when sun is behind facade",
-            "no_sun_position_percent": "No-sun position",
-            "reflection_protection_enabled": "Reflection protection",
-            "reflection_protection_min_tilt": "Reflection protection minimum tilt",
-            "reflection_protection_start_time": "Reflection protection start time",
-            "reflection_protection_end_time": "Reflection protection end time",
-            "respect_manual_close": "Respect manual close",
-            "manual_close_threshold_percent": "Manual close threshold",
             "minimum_tilt_change_percent": "Minimum tilt change",
+            "no_sun_behavior": "Behavior when sun is behind facade",
             "enabled": "Enabled"
           },
           "data_description": {
@@ -113,16 +122,39 @@
             "min_angle_deg": "Minimum mechanical tilt angle constraint",
             "max_angle_deg": "Maximum mechanical tilt angle constraint",
             "invert_tilt_percent": "Invert tilt percent if cover uses reversed semantics",
+            "minimum_tilt_change_percent": "Only adjust tilt if change exceeds this threshold (reduces motor wear)",
             "no_sun_behavior": "What to do when sun is below horizon or behind facade",
-            "no_sun_position_percent": "Tilt position when using 'set_to_percent' behavior",
+            "enabled": "Enable automatic control for this cover"
+          }
+        },
+        "reconfigure_no_sun_position": {
+          "title": "No-Sun Position",
+          "description": "Set the tilt position when sun is below horizon or behind facade.",
+          "data": {
+            "no_sun_position_percent": "Tilt position"
+          },
+          "data_description": {
+            "no_sun_position_percent": "Tilt percent when no direct sunlight (0%=closed, 100%=open)"
+          }
+        },
+        "reconfigure_protection": {
+          "title": "Protection Options",
+          "description": "Configure reflection protection and manual close detection.",
+          "data": {
+            "reflection_protection_enabled": "Enable reflection protection",
+            "reflection_protection_min_tilt": "Reflection protection minimum tilt",
+            "reflection_protection_start_time": "Reflection protection start time",
+            "reflection_protection_end_time": "Reflection protection end time",
+            "respect_manual_close": "Respect manual close",
+            "manual_close_threshold_percent": "Manual close threshold"
+          },
+          "data_description": {
             "reflection_protection_enabled": "Keep minimum tilt when sun is behind facade to prevent glare from reflected light (e.g., from balconies)",
             "reflection_protection_min_tilt": "Minimum tilt to maintain when reflection protection is active",
             "reflection_protection_start_time": "Start of the time window for reflection protection",
             "reflection_protection_end_time": "End of the time window for reflection protection",
             "respect_manual_close": "Don't disturb blinds that appear manually closed",
-            "manual_close_threshold_percent": "Consider blinds manually closed if below this position",
-            "minimum_tilt_change_percent": "Only adjust tilt if change exceeds this threshold (reduces motor wear)",
-            "enabled": "Enable automatic control for this cover"
+            "manual_close_threshold_percent": "Consider blinds manually closed if below this position"
           }
         }
       },
