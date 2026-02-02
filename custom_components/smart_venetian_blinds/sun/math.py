@@ -44,6 +44,7 @@ def calculate_slat_angle(
     slat_spacing_mm: float,
     min_angle_deg: float = 0.0,
     max_angle_deg: float = 90.0,
+    safety_margin_deg: float = 0.0,
 ) -> SlatCalculationResult | None:
     """
     Calculate optimal slat tilt angle for sun cut-off.
@@ -55,6 +56,9 @@ def calculate_slat_angle(
         slat_spacing_mm: Slat spacing (d) in millimeters.
         min_angle_deg: Minimum mechanical angle constraint.
         max_angle_deg: Maximum mechanical angle constraint.
+        safety_margin_deg: Extra degrees added to the calculated angle to
+            account for actuator imprecision, sun angular diameter, and
+            measurement tolerances.
 
     Returns:
         SlatCalculationResult or None if sun is below horizon.
@@ -117,10 +121,13 @@ def calculate_slat_angle(
         theta_rad = math.asin(ratio) - omega_rad
         theta_deg = math.degrees(theta_rad)
 
-    # Step D: Apply mechanical constraints
+    # Step D: Apply safety margin (before mechanical clamping)
+    theta_deg += safety_margin_deg
+
+    # Step E: Apply mechanical constraints
     theta_deg = max(min_angle_deg, min(max_angle_deg, theta_deg))
 
-    # Step E: Convert to percent (0° = 100% open, 90° = 0% open)
+    # Step F: Convert to percent (0° = 100% open, 90° = 0% open)
     # Clamp theta to [0, 90] for percent calculation
     theta_for_percent = max(0.0, min(90.0, theta_deg))
     slat_tilt_percent = 100.0 * (1.0 - theta_for_percent / 90.0)

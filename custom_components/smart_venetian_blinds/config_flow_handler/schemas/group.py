@@ -14,9 +14,11 @@ import voluptuous as vol
 from custom_components.smart_venetian_blinds.const import (
     CONF_FACADE_AZIMUTH,
     CONF_GROUP_NAME,
+    CONF_SAFETY_MARGIN,
     CONF_SLAT_SPACING,
     CONF_SLAT_WIDTH,
     DEFAULT_FACADE_AZIMUTH,
+    DEFAULT_SAFETY_MARGIN,
     DEFAULT_SLAT_SPACING,
     DEFAULT_SLAT_WIDTH,
 )
@@ -80,6 +82,18 @@ def get_group_schema(defaults: Mapping[str, Any] | None = None) -> vol.Schema:
                     mode=selector.NumberSelectorMode.BOX,
                 ),
             ),
+            vol.Optional(
+                CONF_SAFETY_MARGIN,
+                default=defaults.get(CONF_SAFETY_MARGIN, DEFAULT_SAFETY_MARGIN),
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0,
+                    max=15,
+                    step=0.5,
+                    unit_of_measurement="°",
+                    mode=selector.NumberSelectorMode.BOX,
+                ),
+            ),
         },
     )
 
@@ -129,6 +143,18 @@ def get_group_reconfigure_schema(defaults: Mapping[str, Any]) -> vol.Schema:
                     max=200,
                     step=1,
                     unit_of_measurement="mm",
+                    mode=selector.NumberSelectorMode.BOX,
+                ),
+            ),
+            vol.Optional(
+                CONF_SAFETY_MARGIN,
+                default=defaults.get(CONF_SAFETY_MARGIN, DEFAULT_SAFETY_MARGIN),
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0,
+                    max=15,
+                    step=0.5,
+                    unit_of_measurement="°",
                     mode=selector.NumberSelectorMode.BOX,
                 ),
             ),

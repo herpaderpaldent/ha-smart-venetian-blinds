@@ -8,13 +8,15 @@
           "name": "Group name",
           "facade_azimuth_deg": "Facade azimuth",
           "slat_width_mm": "Slat width",
-          "slat_spacing_mm": "Slat spacing"
+          "slat_spacing_mm": "Slat spacing",
+          "safety_margin_deg": "Safety margin"
         },
         "data_description": {
           "name": "A descriptive name for this window group (e.g., 'South Windows')",
           "facade_azimuth_deg": "Direction the window faces (0°=North, 90°=East, 180°=South, 270°=West)",
-          "slat_width_mm": "Width of each slat in millimeters",
-          "slat_spacing_mm": "Spacing between slats in millimeters"
+          "slat_width_mm": "Width of each slat in millimeters (note: for Z-profile slats, use the effective projected width, e.g. ~80mm for Z-90)",
+          "slat_spacing_mm": "Spacing between slats in millimeters (note: for Z-profile slats, use the Lamellenteilung/pitch, not the visible gap)",
+          "safety_margin_deg": "Extra degrees added to calculated angle to ensure full sun blockage (compensates for measurement and actuator tolerances)"
         }
       },
       "reconfigure": {
@@ -23,12 +25,14 @@
         "data": {
           "facade_azimuth_deg": "Facade azimuth",
           "slat_width_mm": "Slat width",
-          "slat_spacing_mm": "Slat spacing"
+          "slat_spacing_mm": "Slat spacing",
+          "safety_margin_deg": "Safety margin"
         },
         "data_description": {
           "facade_azimuth_deg": "Direction the window faces (0°=North, 90°=East, 180°=South, 270°=West)",
-          "slat_width_mm": "Width of each slat in millimeters",
-          "slat_spacing_mm": "Spacing between slats in millimeters"
+          "slat_width_mm": "Width of each slat in millimeters (note: for Z-profile slats, use the effective projected width, e.g. ~80mm for Z-90)",
+          "slat_spacing_mm": "Spacing between slats in millimeters (note: for Z-profile slats, use the Lamellenteilung/pitch, not the visible gap)",
+          "safety_margin_deg": "Extra degrees added to calculated angle to ensure full sun blockage (compensates for measurement and actuator tolerances)"
         }
       }
     },

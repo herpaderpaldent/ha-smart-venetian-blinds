@@ -222,6 +222,63 @@ class TestCalculateSlatAngle:
         # HSA = 270 - 180 = 90, exactly parallel
         assert abs(result.horizontal_shadow_angle_deg) == 90.0
 
+    def test_safety_margin_increases_angle(self) -> None:
+        """Safety margin adds extra degrees to the calculated angle."""
+        sun = SunPosition(azimuth_deg=180.0, elevation_deg=30.0)
+
+        result_no_margin = calculate_slat_angle(
+            sun=sun,
+            facade_azimuth_deg=self.FACADE_SOUTH,
+            slat_width_mm=self.SLAT_WIDTH,
+            slat_spacing_mm=self.SLAT_SPACING,
+            safety_margin_deg=0.0,
+        )
+        result_with_margin = calculate_slat_angle(
+            sun=sun,
+            facade_azimuth_deg=self.FACADE_SOUTH,
+            slat_width_mm=self.SLAT_WIDTH,
+            slat_spacing_mm=self.SLAT_SPACING,
+            safety_margin_deg=5.0,
+        )
+        assert result_no_margin is not None
+        assert result_with_margin is not None
+        assert result_with_margin.slat_angle_deg == pytest.approx(result_no_margin.slat_angle_deg + 5.0, abs=0.15)
+
+    def test_safety_margin_respects_max_angle(self) -> None:
+        """Safety margin still respects max_angle constraint."""
+        sun = SunPosition(azimuth_deg=180.0, elevation_deg=80.0)
+        result = calculate_slat_angle(
+            sun=sun,
+            facade_azimuth_deg=self.FACADE_SOUTH,
+            slat_width_mm=self.SLAT_WIDTH,
+            slat_spacing_mm=self.SLAT_SPACING,
+            max_angle_deg=60.0,
+            safety_margin_deg=15.0,
+        )
+        assert result is not None
+        assert result.slat_angle_deg <= 60.0
+
+    def test_zero_safety_margin_unchanged(self) -> None:
+        """Zero safety margin (default) produces unchanged results."""
+        sun = SunPosition(azimuth_deg=180.0, elevation_deg=30.0)
+
+        result_default = calculate_slat_angle(
+            sun=sun,
+            facade_azimuth_deg=self.FACADE_SOUTH,
+            slat_width_mm=self.SLAT_WIDTH,
+            slat_spacing_mm=self.SLAT_SPACING,
+        )
+        result_explicit_zero = calculate_slat_angle(
+            sun=sun,
+            facade_azimuth_deg=self.FACADE_SOUTH,
+            slat_width_mm=self.SLAT_WIDTH,
+            slat_spacing_mm=self.SLAT_SPACING,
+            safety_margin_deg=0.0,
+        )
+        assert result_default is not None
+        assert result_explicit_zero is not None
+        assert result_default.slat_angle_deg == result_explicit_zero.slat_angle_deg
+
     def test_various_facade_orientations(self) -> None:
         """Different facade orientations produce valid results."""
         sun = SunPosition(azimuth_deg=135.0, elevation_deg=45.0)  # SE

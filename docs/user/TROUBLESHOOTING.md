@@ -30,7 +30,24 @@ The calculation depends critically on accurate slat geometry:
 
 **Why it matters:** The formula `sin(theta + omega) = (d * cos(omega)) / L` requires precise values. If `d/L > 1`, complete sun blocking is physically impossible.
 
-### 2. Reduce Minimum Tilt Change Threshold
+### 2. Z-Profile (Z-Lamelle) Slats
+
+If your blinds use **Z-profile slats** (common in exterior venetian blinds / Raffstoren such as Schenker Storen VR90, Warema, Griesser, etc.), the calculated angle will be too small because the integration assumes flat slats.
+
+Z-profile slats have a bent/folded cross-section. This affects the calculation in two ways:
+
+- **Effective width is smaller** than the edge-to-edge measurement. The Z-fold angles part of the slat surface away, reducing the projected shadow width. For a nominal 90mm Z-lamella, the effective width is typically around 80mm.
+- **Slat pitch (Lamellenteilung) differs from the gap.** Z-profile slats overlap when closed, so the center-to-center pitch is typically 72-80mm for a 90mm Z-lamella.
+
+**How to configure Z-profile slats:**
+
+1. **Slat width:** Enter the **effective projected width**, not the edge-to-edge measurement. For Z-90 slats, try ~80mm instead of 90mm. For Z-70 slats, try ~60mm.
+2. **Slat spacing:** Enter the **Lamellenteilung** (pitch = center-to-center distance between adjacent slats). To measure: count 10 slats, measure the distance from the top edge of the first to the top edge of the 11th slat, and divide by 10.
+3. **Safety margin:** Use 2-5° for remaining tolerances. If you need more than ~8°, your width/spacing values likely need further adjustment.
+
+**Calibration tip:** With the sun currently hitting the facade, manually adjust the blinds until sunlight is just blocked. Note the tilt percentage, then adjust slat width in the configuration until the calculated tilt matches.
+
+### 3. Reduce Minimum Tilt Change Threshold
 
 The default 5% threshold prevents motor wear but can cause the blinds to lag behind the sun:
 
@@ -44,7 +61,7 @@ The default 5% threshold prevents motor wear but can cause the blinds to lag beh
 
 To change: Reconfigure the cover -> "Minimum tilt change" setting.
 
-### 3. Check Your Geometry Ratio
+### 4. Check Your Geometry Ratio
 
 The integration calculates a ratio: `(spacing * cos(profile_angle)) / width`
 
@@ -59,7 +76,7 @@ If your slats are spaced far apart relative to their width, sunlight will always
 - Consider blinds with wider slats or tighter spacing
 - Use the "no sun behavior" setting to fully close during problematic times
 
-### 4. Monitor the Diagnostic Sensors
+### 5. Monitor the Diagnostic Sensors
 
 The integration provides sensors to help diagnose issues:
 
@@ -69,7 +86,7 @@ The integration provides sensors to help diagnose issues:
 
 Check if the slat_tilt sensor shows the value you expect. If the sensor shows the correct value but blinds aren't there, the minimum tilt threshold may be blocking updates.
 
-### 5. Facade Azimuth Accuracy
+### 6. Facade Azimuth Accuracy
 
 The facade azimuth (compass direction your window faces) affects all calculations:
 
@@ -86,7 +103,7 @@ How to verify:
 2. Or measure from Google Maps aerial view
 3. **Test:** When calculated tilt is very wrong, check if your facade azimuth is off by 20-40 deg
 
-### 6. Diagnostic Template
+### 7. Diagnostic Template
 
 Run this in **Developer Tools -> Template** when sun is penetrating:
 

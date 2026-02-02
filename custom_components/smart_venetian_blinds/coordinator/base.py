@@ -13,10 +13,12 @@ from custom_components.smart_venetian_blinds.const import (
     CONF_CHANGE_THRESHOLD,
     CONF_FACADE_AZIMUTH,
     CONF_MIN_UPDATE_INTERVAL,
+    CONF_SAFETY_MARGIN,
     CONF_SLAT_SPACING,
     CONF_SLAT_WIDTH,
     DEFAULT_CHANGE_THRESHOLD,
     DEFAULT_MIN_UPDATE_INTERVAL,
+    DEFAULT_SAFETY_MARGIN,
     LOGGER,
 )
 from custom_components.smart_venetian_blinds.sun import SlatCalculationResult, calculate_slat_angle
@@ -124,6 +126,7 @@ class SmartVenetianBlindsDataUpdateCoordinator(DataUpdateCoordinator[SlatCalcula
         facade_azimuth = self.config_entry.data.get(CONF_FACADE_AZIMUTH, 180)
         slat_width = self.config_entry.data.get(CONF_SLAT_WIDTH, 80)
         slat_spacing = self.config_entry.data.get(CONF_SLAT_SPACING, 70)
+        safety_margin = self.config_entry.data.get(CONF_SAFETY_MARGIN, DEFAULT_SAFETY_MARGIN)
 
         # Calculate slat angle
         result = calculate_slat_angle(
@@ -131,6 +134,7 @@ class SmartVenetianBlindsDataUpdateCoordinator(DataUpdateCoordinator[SlatCalcula
             facade_azimuth_deg=facade_azimuth,
             slat_width_mm=slat_width,
             slat_spacing_mm=slat_spacing,
+            safety_margin_deg=safety_margin,
         )
 
         LOGGER.debug(
