@@ -2,13 +2,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
-if TYPE_CHECKING:
-    from pytest_freezer import FrozenDateTimeFactory
 
 from custom_components.smart_venetian_blinds.const import (
     CONF_COVER_ENABLED,
@@ -299,6 +295,28 @@ class TestApplyCalculation:
         assert result is False
 
     @pytest.mark.asyncio
+    async def test_handles_zero_slat_angle_as_no_sun(
+        self,
+        mock_controller: CoverController,
+        cover_config_default: CoverConfig,
+    ) -> None:
+        """Treats slat_angle_deg <= 0 as no-sun (no blocking needed, skip drive)."""
+        calculation = SlatCalculationResult(
+            slat_angle_deg=0.0,
+            slat_tilt_percent=100.0,
+            profile_angle_deg=0.0,
+            horizontal_shadow_angle_deg=85.0,
+            sun_is_behind_facade=False,
+        )
+
+        result = await mock_controller.apply_calculation(cover_config_default, calculation)
+
+        # Default behavior is keep_last → no action
+        assert result is False
+        # No service calls should be made (no drive, no tilt)
+        mock_controller._hass.services.async_call.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_skips_when_position_unavailable(
         self,
         mock_hass: MagicMock,
@@ -511,16 +529,13 @@ class TestGetCoverTilt:
 
 @pytest.mark.unit
 class TestReflectionProtection:
-    """Tests for reflection protection feature."""
+    """Tests for reflection protection feature (auto-triggered by sun_has_hit_facade)."""
 
-    @pytest.fixture
-    def mock_controller(self, mock_hass: MagicMock) -> CoverController:
-        """Create controller with mocked service calls."""
+    def test_disabled_returns_false(self, mock_hass: MagicMock) -> None:
+        """Reflection protection disabled returns False regardless of sun state."""
         mock_hass.services.async_call = AsyncMock()
-        return CoverController(mock_hass)
+        controller = CoverController(mock_hass, sun_has_hit_facade=True)
 
-    def test_disabled_returns_false(self, mock_controller: CoverController) -> None:
-        """Reflection protection disabled returns False."""
         config = CoverConfig(
             entity_id="cover.test",
             drive_position=100,
@@ -539,15 +554,14 @@ class TestReflectionProtection:
             reflection_protection_end_time="17:00",
         )
 
-        result = mock_controller._is_reflection_protection_active(config)
+        result = controller._is_reflection_protection_active(config)
 
         assert result is False
 
-    def test_within_time_window_returns_true(
-        self, mock_controller: CoverController, freezer: FrozenDateTimeFactory
-    ) -> None:
-        """Returns True when within configured time window."""
-        freezer.move_to("2024-06-15 12:00:00")
+    def test_active_when_sun_has_hit_facade(self, mock_hass: MagicMock) -> None:
+        """Returns True when enabled and sun has previously hit the facade."""
+        mock_hass.services.async_call = AsyncMock()
+        controller = CoverController(mock_hass, sun_has_hit_facade=True)
 
         config = CoverConfig(
             entity_id="cover.test",
@@ -567,15 +581,14 @@ class TestReflectionProtection:
             reflection_protection_end_time="17:00",
         )
 
-        result = mock_controller._is_reflection_protection_active(config)
+        result = controller._is_reflection_protection_active(config)
 
         assert result is True
 
-    def test_outside_time_window_returns_false(
-        self, mock_controller: CoverController, freezer: FrozenDateTimeFactory
-    ) -> None:
-        """Returns False when outside configured time window."""
-        freezer.move_to("2024-06-15 08:00:00")  # Before 09:00
+    def test_inactive_before_sun_hits_facade(self, mock_hass: MagicMock) -> None:
+        """Returns False when sun has not yet hit the facade (e.g., early morning)."""
+        mock_hass.services.async_call = AsyncMock()
+        controller = CoverController(mock_hass, sun_has_hit_facade=False)
 
         config = CoverConfig(
             entity_id="cover.test",
@@ -595,72 +608,15 @@ class TestReflectionProtection:
             reflection_protection_end_time="17:00",
         )
 
-        result = mock_controller._is_reflection_protection_active(config)
+        result = controller._is_reflection_protection_active(config)
 
         assert result is False
-
-    def test_overnight_window_before_midnight(
-        self, mock_controller: CoverController, freezer: FrozenDateTimeFactory
-    ) -> None:
-        """Handles overnight time window (e.g., 22:00 - 06:00) before midnight."""
-        freezer.move_to("2024-06-15 23:00:00")
-
-        config = CoverConfig(
-            entity_id="cover.test",
-            drive_position=100,
-            min_angle=0,
-            max_angle=90,
-            invert_tilt=False,
-            no_sun_behavior="keep_last",
-            no_sun_position=50,
-            respect_manual_close=True,
-            manual_close_threshold=30,
-            minimum_tilt_change=5,
-            enabled=True,
-            reflection_protection_enabled=True,
-            reflection_protection_min_tilt=50,
-            reflection_protection_start_time="22:00",
-            reflection_protection_end_time="06:00",
-        )
-
-        result = mock_controller._is_reflection_protection_active(config)
-
-        assert result is True
-
-    def test_overnight_window_after_midnight(
-        self, mock_controller: CoverController, freezer: FrozenDateTimeFactory
-    ) -> None:
-        """Handles overnight time window (e.g., 22:00 - 06:00) after midnight."""
-        freezer.move_to("2024-06-15 04:00:00")
-
-        config = CoverConfig(
-            entity_id="cover.test",
-            drive_position=100,
-            min_angle=0,
-            max_angle=90,
-            invert_tilt=False,
-            no_sun_behavior="keep_last",
-            no_sun_position=50,
-            respect_manual_close=True,
-            manual_close_threshold=30,
-            minimum_tilt_change=5,
-            enabled=True,
-            reflection_protection_enabled=True,
-            reflection_protection_min_tilt=50,
-            reflection_protection_start_time="22:00",
-            reflection_protection_end_time="06:00",
-        )
-
-        result = mock_controller._is_reflection_protection_active(config)
-
-        assert result is True
 
     @pytest.mark.asyncio
-    async def test_handle_no_sun_uses_reflection_protection(
-        self, mock_controller: CoverController, freezer: FrozenDateTimeFactory
-    ) -> None:
-        """When reflection protection active, sets min tilt instead of no_sun_behavior."""
-        freezer.move_to("2024-06-15 12:00:00")
+    async def test_handle_no_sun_uses_reflection_when_sun_passed(self, mock_hass: MagicMock) -> None:
+        """When sun has passed facade, reflection protection sets min tilt instead of no_sun_behavior."""
+        mock_hass.services.async_call = AsyncMock()
+        controller = CoverController(mock_hass, sun_has_hit_facade=True)
 
         config = CoverConfig(
             entity_id="cover.test",
@@ -680,20 +636,19 @@ class TestReflectionProtection:
             reflection_protection_end_time="17:00",
         )
 
-        result = await mock_controller._handle_no_sun(config)
+        result = await controller._handle_no_sun(config)
 
         assert result is True
-        mock_controller._hass.services.async_call.assert_called_once()
-        call_args = mock_controller._hass.services.async_call.call_args
+        controller._hass.services.async_call.assert_called_once()
+        call_args = controller._hass.services.async_call.call_args
         service_data = call_args[0][2]
         assert service_data["tilt_position"] == 60
 
     @pytest.mark.asyncio
-    async def test_handle_no_sun_falls_back_outside_window(
-        self, mock_controller: CoverController, freezer: FrozenDateTimeFactory
-    ) -> None:
-        """When outside time window, uses normal no_sun_behavior."""
-        freezer.move_to("2024-06-15 20:00:00")  # After 17:00
+    async def test_handle_no_sun_falls_back_when_sun_not_hit(self, mock_hass: MagicMock) -> None:
+        """When sun hasn't hit facade yet, uses normal no_sun_behavior."""
+        mock_hass.services.async_call = AsyncMock()
+        controller = CoverController(mock_hass, sun_has_hit_facade=False)
 
         config = CoverConfig(
             entity_id="cover.test",
@@ -713,10 +668,10 @@ class TestReflectionProtection:
             reflection_protection_end_time="17:00",
         )
 
-        result = await mock_controller._handle_no_sun(config)
+        result = await controller._handle_no_sun(config)
 
         assert result is True
-        mock_controller._hass.services.async_call.assert_called_once()
-        call_args = mock_controller._hass.services.async_call.call_args
+        controller._hass.services.async_call.assert_called_once()
+        call_args = controller._hass.services.async_call.call_args
         service_data = call_args[0][2]
         assert service_data["tilt_position"] == 100  # "open" behavior

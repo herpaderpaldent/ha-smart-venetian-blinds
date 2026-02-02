@@ -93,16 +93,12 @@
           "data": {
             "reflection_protection_enabled": "Reflexionsschutz aktivieren",
             "reflection_protection_min_tilt": "Minimale Neigung bei Reflexionsschutz",
-            "reflection_protection_start_time": "Startzeit Reflexionsschutz",
-            "reflection_protection_end_time": "Endzeit Reflexionsschutz",
             "respect_manual_close": "Manuelles Schließen respektieren",
             "manual_close_threshold_percent": "Schwellenwert für manuelles Schließen"
           },
           "data_description": {
-            "reflection_protection_enabled": "Minimale Neigung beibehalten, wenn Sonne hinter Fassade ist, um Blendung durch reflektiertes Licht zu verhindern (z.B. von Balkonen)",
+            "reflection_protection_enabled": "Automatisch minimale Neigung beibehalten, nachdem die Sonne die Fassade passiert hat, um Blendung durch reflektiertes Licht zu verhindern (z.B. von Balkonen). Deaktiviert sich bei Sonnenuntergang.",
             "reflection_protection_min_tilt": "Minimale Neigung, die bei aktivem Reflexionsschutz beibehalten wird",
-            "reflection_protection_start_time": "Beginn des Zeitfensters für Reflexionsschutz",
-            "reflection_protection_end_time": "Ende des Zeitfensters für Reflexionsschutz",
             "respect_manual_close": "Jalousien nicht stören, die manuell geschlossen wurden",
             "manual_close_threshold_percent": "Auto-Steuerung überspringen, wenn Neigung unter diesem Prozent liegt (Lamellen geschlossen = Schlafmodus)"
           }
@@ -147,16 +143,12 @@
           "data": {
             "reflection_protection_enabled": "Reflexionsschutz aktivieren",
             "reflection_protection_min_tilt": "Minimale Neigung bei Reflexionsschutz",
-            "reflection_protection_start_time": "Startzeit Reflexionsschutz",
-            "reflection_protection_end_time": "Endzeit Reflexionsschutz",
             "respect_manual_close": "Manuelles Schließen respektieren",
             "manual_close_threshold_percent": "Schwellenwert für manuelles Schließen"
           },
           "data_description": {
-            "reflection_protection_enabled": "Minimale Neigung beibehalten, wenn Sonne hinter Fassade ist, um Blendung durch reflektiertes Licht zu verhindern (z.B. von Balkonen)",
+            "reflection_protection_enabled": "Automatisch minimale Neigung beibehalten, nachdem die Sonne die Fassade passiert hat, um Blendung durch reflektiertes Licht zu verhindern (z.B. von Balkonen). Deaktiviert sich bei Sonnenuntergang.",
             "reflection_protection_min_tilt": "Minimale Neigung, die bei aktivem Reflexionsschutz beibehalten wird",
-            "reflection_protection_start_time": "Beginn des Zeitfensters für Reflexionsschutz",
-            "reflection_protection_end_time": "Ende des Zeitfensters für Reflexionsschutz",
             "respect_manual_close": "Jalousien nicht stören, die manuell geschlossen wurden",
             "manual_close_threshold_percent": "Auto-Steuerung überspringen, wenn Neigung unter diesem Prozent liegt (Lamellen geschlossen = Schlafmodus)"
           }

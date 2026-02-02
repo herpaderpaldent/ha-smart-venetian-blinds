@@ -36,6 +36,9 @@ class GroupState:
     # Auto control state (per group)
     auto_control_enabled: bool = True
 
+    # Whether the sun has actively hit the facade during this solar cycle
+    sun_has_hit_facade: bool = False
+
     # Cover states for manual close detection (entity_id -> last known position)
     cover_positions: dict[str, float] = field(default_factory=dict)
 

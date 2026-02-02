@@ -143,6 +143,19 @@ class SmartVenetianBlindsDataUpdateCoordinator(DataUpdateCoordinator[SlatCalcula
             result,
         )
 
+        # Update sun_has_hit_facade tracking
+        state = self.config_entry.runtime_data.state
+        if result is None:
+            # Sun below horizon: reset flag
+            state.sun_has_hit_facade = False
+        elif result.sun_is_behind_facade:
+            # Sun behind facade: leave unchanged (preserves True after sun passes)
+            pass
+        elif result.slat_angle_deg > 0.0:
+            # Sun actively requires blocking
+            state.sun_has_hit_facade = True
+        # else: angle <= 0, leave unchanged
+
         return result
 
     def trigger_update(self) -> None:

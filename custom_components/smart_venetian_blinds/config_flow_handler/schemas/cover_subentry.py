@@ -25,9 +25,7 @@ from custom_components.smart_venetian_blinds.const import (
     CONF_NO_SUN_BEHAVIOR,
     CONF_NO_SUN_POSITION,
     CONF_REFLECTION_PROTECTION_ENABLED,
-    CONF_REFLECTION_PROTECTION_END_TIME,
     CONF_REFLECTION_PROTECTION_MIN_TILT,
-    CONF_REFLECTION_PROTECTION_START_TIME,
     CONF_RESPECT_MANUAL_CLOSE,
     DEFAULT_COVER_ENABLED,
     DEFAULT_DRIVE_POSITION,
@@ -39,9 +37,7 @@ from custom_components.smart_venetian_blinds.const import (
     DEFAULT_NO_SUN_BEHAVIOR,
     DEFAULT_NO_SUN_POSITION,
     DEFAULT_REFLECTION_PROTECTION_ENABLED,
-    DEFAULT_REFLECTION_PROTECTION_END_TIME,
     DEFAULT_REFLECTION_PROTECTION_MIN_TILT,
-    DEFAULT_REFLECTION_PROTECTION_START_TIME,
     DEFAULT_RESPECT_MANUAL_CLOSE,
 )
 from homeassistant.helpers import selector
@@ -237,20 +233,6 @@ def get_protection_schema(
                     mode=selector.NumberSelectorMode.SLIDER,
                 ),
             ),
-            vol.Optional(
-                CONF_REFLECTION_PROTECTION_START_TIME,
-                default=defaults.get(
-                    CONF_REFLECTION_PROTECTION_START_TIME,
-                    DEFAULT_REFLECTION_PROTECTION_START_TIME,
-                ),
-            ): selector.TimeSelector(),
-            vol.Optional(
-                CONF_REFLECTION_PROTECTION_END_TIME,
-                default=defaults.get(
-                    CONF_REFLECTION_PROTECTION_END_TIME,
-                    DEFAULT_REFLECTION_PROTECTION_END_TIME,
-                ),
-            ): selector.TimeSelector(),
             vol.Required(
                 CONF_RESPECT_MANUAL_CLOSE,
                 default=defaults.get(CONF_RESPECT_MANUAL_CLOSE, DEFAULT_RESPECT_MANUAL_CLOSE),
@@ -396,20 +378,6 @@ def get_cover_subentry_schema(
                     mode=selector.NumberSelectorMode.SLIDER,
                 ),
             ),
-            vol.Optional(
-                CONF_REFLECTION_PROTECTION_START_TIME,
-                default=defaults.get(
-                    CONF_REFLECTION_PROTECTION_START_TIME,
-                    DEFAULT_REFLECTION_PROTECTION_START_TIME,
-                ),
-            ): selector.TimeSelector(),
-            vol.Optional(
-                CONF_REFLECTION_PROTECTION_END_TIME,
-                default=defaults.get(
-                    CONF_REFLECTION_PROTECTION_END_TIME,
-                    DEFAULT_REFLECTION_PROTECTION_END_TIME,
-                ),
-            ): selector.TimeSelector(),
             vol.Required(
                 CONF_RESPECT_MANUAL_CLOSE,
                 default=defaults.get(CONF_RESPECT_MANUAL_CLOSE, DEFAULT_RESPECT_MANUAL_CLOSE),

@@ -95,14 +95,11 @@ async def async_setup_entry(
             )
             return
 
-        # Get the calculation result
+        # Get the calculation result (may be None when sun is below horizon)
         calculation = coordinator.data
-        if calculation is None:
-            LOGGER.debug("No calculation data available, skipping cover update")
-            return
 
-        # Apply to covers
-        controller = CoverController(hass)
+        # Apply to covers (controller handles None via _handle_no_sun)
+        controller = CoverController(hass, sun_has_hit_facade=entry.runtime_data.state.sun_has_hit_facade)
         results = await controller.apply_to_all_covers(
             entry.subentries,
             calculation,

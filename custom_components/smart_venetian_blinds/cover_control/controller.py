@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
-from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from custom_components.smart_venetian_blinds.const import (
@@ -46,7 +45,6 @@ from custom_components.smart_venetian_blinds.const import (
 from custom_components.smart_venetian_blinds.sun.math import apply_tilt_inversion
 from homeassistant.components.cover import ATTR_CURRENT_POSITION, ATTR_CURRENT_TILT_POSITION
 from homeassistant.const import ATTR_ENTITY_ID, SERVICE_SET_COVER_POSITION, SERVICE_SET_COVER_TILT_POSITION
-from homeassistant.util import dt as dt_util
 
 if TYPE_CHECKING:
     from custom_components.smart_venetian_blinds.sun import SlatCalculationResult
@@ -119,9 +117,10 @@ class CoverController:
     POSITION_TIMEOUT_SEC = 60
     POSITION_TOLERANCE_PERCENT = 2
 
-    def __init__(self, hass: HomeAssistant) -> None:
+    def __init__(self, hass: HomeAssistant, *, sun_has_hit_facade: bool = False) -> None:
         """Initialize the cover controller."""
         self._hass = hass
+        self._sun_has_hit_facade = sun_has_hit_facade
 
     async def apply_calculation(
         self,
@@ -148,8 +147,8 @@ class CoverController:
             LOGGER.debug("Cover %s is disabled, skipping", config.entity_id)
             return False
 
-        # Handle no-sun case
-        if calculation is None or calculation.sun_is_behind_facade:
+        # Handle no-sun case (includes zero angle — no blocking needed)
+        if calculation is None or calculation.sun_is_behind_facade or calculation.slat_angle_deg <= 0.0:
             return await self._handle_no_sun(config)
 
         # Get current cover position
@@ -218,23 +217,20 @@ class CoverController:
         """
         Check if reflection protection should be active now.
 
+        Reflection protection activates automatically when the sun has previously
+        hit the facade during this solar cycle and is now no longer requiring blocking.
+        It deactivates when the sun sets below the horizon (resetting sun_has_hit_facade).
+
         Args:
             config: The cover configuration.
 
         Returns:
-            True if reflection protection is enabled and current time is within the window.
+            True if reflection protection is enabled and sun has hit facade this cycle.
         """
         if not config.reflection_protection_enabled:
             return False
 
-        now = dt_util.now().time()
-        start = datetime.strptime(config.reflection_protection_start_time, "%H:%M").time()
-        end = datetime.strptime(config.reflection_protection_end_time, "%H:%M").time()
-
-        # Handle overnight windows (e.g., 22:00 - 06:00)
-        if start <= end:
-            return start <= now <= end
-        return now >= start or now <= end
+        return self._sun_has_hit_facade
 
     async def _handle_no_sun(self, config: CoverConfig) -> bool:
         """

@@ -93,16 +93,12 @@
           "data": {
             "reflection_protection_enabled": "Enable reflection protection",
             "reflection_protection_min_tilt": "Reflection protection minimum tilt",
-            "reflection_protection_start_time": "Reflection protection start time",
-            "reflection_protection_end_time": "Reflection protection end time",
             "respect_manual_close": "Respect manual close",
             "manual_close_threshold_percent": "Manual close threshold"
           },
           "data_description": {
-            "reflection_protection_enabled": "Keep minimum tilt when sun is behind facade to prevent glare from reflected light (e.g., from balconies)",
+            "reflection_protection_enabled": "Automatically keep minimum tilt after the sun has passed the facade to prevent glare from reflected light (e.g., from balconies). Deactivates when the sun sets.",
             "reflection_protection_min_tilt": "Minimum tilt to maintain when reflection protection is active",
-            "reflection_protection_start_time": "Start of the time window for reflection protection",
-            "reflection_protection_end_time": "End of the time window for reflection protection",
             "respect_manual_close": "Don't disturb blinds that appear manually closed",
             "manual_close_threshold_percent": "Skip auto-control if tilt is below this percent (slats closed = sleep mode)"
           }
@@ -147,16 +143,12 @@
           "data": {
             "reflection_protection_enabled": "Enable reflection protection",
             "reflection_protection_min_tilt": "Reflection protection minimum tilt",
-            "reflection_protection_start_time": "Reflection protection start time",
-            "reflection_protection_end_time": "Reflection protection end time",
             "respect_manual_close": "Respect manual close",
             "manual_close_threshold_percent": "Manual close threshold"
           },
           "data_description": {
-            "reflection_protection_enabled": "Keep minimum tilt when sun is behind facade to prevent glare from reflected light (e.g., from balconies)",
+            "reflection_protection_enabled": "Automatically keep minimum tilt after the sun has passed the facade to prevent glare from reflected light (e.g., from balconies). Deactivates when the sun sets.",
             "reflection_protection_min_tilt": "Minimum tilt to maintain when reflection protection is active",
-            "reflection_protection_start_time": "Start of the time window for reflection protection",
-            "reflection_protection_end_time": "End of the time window for reflection protection",
             "respect_manual_close": "Don't disturb blinds that appear manually closed",
             "manual_close_threshold_percent": "Skip auto-control if tilt is below this percent (slats closed = sleep mode)"
           }
