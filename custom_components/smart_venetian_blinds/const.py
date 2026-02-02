@@ -11,9 +11,7 @@ ATTRIBUTION = "Sun-based slat angle calculation"
 # Platform parallel updates - applied to all platforms
 PARALLEL_UPDATES = 1
 
-# Sun entity IDs
-SENSOR_SUN_AZIMUTH = "sensor.sun_solar_azimuth"
-SENSOR_SUN_ELEVATION = "sensor.sun_solar_elevation"
+# Sun entity ID
 SUN_ENTITY = "sun.sun"
 
 # Subentry type
