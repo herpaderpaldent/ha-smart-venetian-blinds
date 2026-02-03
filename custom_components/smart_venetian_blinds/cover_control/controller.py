@@ -147,8 +147,8 @@ class CoverController:
             LOGGER.debug("Cover %s is disabled, skipping", config.entity_id)
             return False
 
-        # Handle no-sun case (includes zero angle — no blocking needed)
-        if calculation is None or calculation.sun_is_behind_facade or calculation.slat_angle_deg <= 0.0:
+        # Handle no-sun case
+        if calculation is None or calculation.sun_is_behind_facade:
             return await self._handle_no_sun(config)
 
         # Get current cover position

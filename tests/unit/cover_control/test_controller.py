@@ -295,28 +295,6 @@ class TestApplyCalculation:
         assert result is False
 
     @pytest.mark.asyncio
-    async def test_handles_zero_slat_angle_as_no_sun(
-        self,
-        mock_controller: CoverController,
-        cover_config_default: CoverConfig,
-    ) -> None:
-        """Treats slat_angle_deg <= 0 as no-sun (no blocking needed, skip drive)."""
-        calculation = SlatCalculationResult(
-            slat_angle_deg=0.0,
-            slat_tilt_percent=100.0,
-            profile_angle_deg=0.0,
-            horizontal_shadow_angle_deg=85.0,
-            sun_is_behind_facade=False,
-        )
-
-        result = await mock_controller.apply_calculation(cover_config_default, calculation)
-
-        # Default behavior is keep_last → no action
-        assert result is False
-        # No service calls should be made (no drive, no tilt)
-        mock_controller._hass.services.async_call.assert_not_called()
-
-    @pytest.mark.asyncio
     async def test_skips_when_position_unavailable(
         self,
         mock_hass: MagicMock,
