@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <!-- Sun -->
+  <circle cx="200" cy="56" r="32" fill="#FFB300"/>
+  <!-- Window frame -->
+  <rect x="32" y="48" width="160" height="176" rx="8" fill="none" stroke="#1976D2" stroke-width="8"/>
+  <!-- Slats (angled) -->
+  <line x1="40" y1="80" x2="184" y2="88" stroke="#1976D2" stroke-width="6" stroke-linecap="round"/>
+  <line x1="40" y1="112" x2="184" y2="120" stroke="#1976D2" stroke-width="6" stroke-linecap="round"/>
+  <line x1="40" y1="144" x2="184" y2="152" stroke="#1976D2" stroke-width="6" stroke-linecap="round"/>
+  <line x1="40" y1="176" x2="184" y2="184" stroke="#1976D2" stroke-width="6" stroke-linecap="round"/>
+</svg>
