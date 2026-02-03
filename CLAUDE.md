@@ -121,6 +121,5 @@ Run `script/check` before committing - it should pass with zero errors.
 
 ## Additional Documentation
 
-- `AGENTS.md` - Comprehensive AI agent instructions (validation, testing, HA patterns)
-- `.github/copilot-instructions.md` - Quick reference for GitHub Copilot
-- `.github/instructions/*.md` - File-type-specific guidance (Python, YAML, etc.)
+- `docs/development/ARCHITECTURE.md` - Technical architecture docs
+- `docs/development/DECISIONS.md` - Architecture Decision Records
