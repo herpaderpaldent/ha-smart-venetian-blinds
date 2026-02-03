@@ -151,6 +151,7 @@ class SmartVenetianBlindsDataUpdateCoordinator(DataUpdateCoordinator[SlatCalcula
         elif not result.sun_is_behind_facade:
             # Sun is on facade (even at angle 0°): mark as hit
             state.sun_has_hit_facade = True
+            state.no_sun_action_applied = False
         # else: sun behind facade, leave unchanged (preserves True after sun passes)
 
         return result

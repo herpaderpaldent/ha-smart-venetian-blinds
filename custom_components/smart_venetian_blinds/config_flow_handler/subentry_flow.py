@@ -7,8 +7,7 @@ tilt settings, and behavior configuration.
 
 The flow uses a multi-step wizard:
 1. Cover & Tilt Settings (user/reconfigure)
-2. No-Sun Position (conditional - only if "set_to_percent" selected)
-3. Protection Options (protection/reconfigure_protection)
+2. Protection Options (protection/reconfigure_protection)
 
 For more information:
 https://developers.home-assistant.io/docs/config_entries_config_flow_handler#subentry-flows
@@ -20,17 +19,9 @@ from typing import Any
 
 from custom_components.smart_venetian_blinds.config_flow_handler.schemas import (
     get_cover_tilt_schema,
-    get_no_sun_position_schema,
     get_protection_schema,
 )
-from custom_components.smart_venetian_blinds.const import (
-    CONF_COVER_ENTITY,
-    CONF_COVER_NAME,
-    CONF_NO_SUN_BEHAVIOR,
-    CONF_NO_SUN_POSITION,
-    DEFAULT_NO_SUN_POSITION,
-    LOGGER,
-)
+from custom_components.smart_venetian_blinds.const import CONF_COVER_ENTITY, CONF_COVER_NAME, LOGGER
 from homeassistant.config_entries import ConfigSubentryFlow, SubentryFlowResult
 from homeassistant.helpers import entity_registry as er
 
@@ -44,8 +35,7 @@ class CoverSubentryFlowHandler(ConfigSubentryFlow):
     and behavior when sun is behind the facade.
 
     The flow is structured as a multi-step wizard:
-    - Step 1: Cover entity, tilt settings, no-sun behavior
-    - Step 1.5: No-sun position (conditional, only if "set_to_percent" selected)
+    - Step 1: Cover entity, tilt settings
     - Step 2: Protection options (reflection protection, manual close)
     """
 
@@ -80,41 +70,12 @@ class CoverSubentryFlowHandler(ConfigSubentryFlow):
                 # Store data for subsequent steps
                 self._user_data = user_input
 
-                # Check if we need the no_sun_position sub-step
-                if user_input.get(CONF_NO_SUN_BEHAVIOR) == "set_to_percent":
-                    return await self.async_step_no_sun_position()
-
-                # Otherwise go directly to protection step
                 return await self.async_step_protection()
 
         return self.async_show_form(
             step_id="user",
             data_schema=get_cover_tilt_schema(user_input),
             errors=errors,
-        )
-
-    async def async_step_no_sun_position(
-        self,
-        user_input: dict[str, Any] | None = None,
-    ) -> SubentryFlowResult:
-        """
-        Step 1.5: No-sun position (conditional).
-
-        This step is only shown when no_sun_behavior is "set_to_percent".
-
-        Args:
-            user_input: The user input from the form.
-
-        Returns:
-            SubentryFlowResult showing form or proceeding to protection step.
-        """
-        if user_input is not None:
-            self._user_data.update(user_input)
-            return await self.async_step_protection()
-
-        return self.async_show_form(
-            step_id="no_sun_position",
-            data_schema=get_no_sun_position_schema(self._user_data),
         )
 
     async def async_step_protection(
@@ -133,10 +94,6 @@ class CoverSubentryFlowHandler(ConfigSubentryFlow):
         if user_input is not None:
             # Merge all data from previous steps
             full_data = {**self._user_data, **user_input}
-
-            # Set default no_sun_position if not using "set_to_percent"
-            if full_data.get(CONF_NO_SUN_BEHAVIOR) != "set_to_percent":
-                full_data[CONF_NO_SUN_POSITION] = DEFAULT_NO_SUN_POSITION
 
             cover_entity_id = full_data[CONF_COVER_ENTITY]
             title = self._get_cover_title(cover_entity_id, full_data)
@@ -180,44 +137,11 @@ class CoverSubentryFlowHandler(ConfigSubentryFlow):
                 **user_input,
             }
 
-            # Check if we need the no_sun_position sub-step
-            if user_input.get(CONF_NO_SUN_BEHAVIOR) == "set_to_percent":
-                return await self.async_step_reconfigure_no_sun_position()
-
-            # Otherwise go directly to protection step
             return await self.async_step_reconfigure_protection()
 
         return self.async_show_form(
             step_id="reconfigure",
             data_schema=get_cover_tilt_schema(config_subentry.data, show_entity_selector=False),
-        )
-
-    async def async_step_reconfigure_no_sun_position(
-        self,
-        user_input: dict[str, Any] | None = None,
-    ) -> SubentryFlowResult:
-        """
-        Reconfigure Step 1.5: No-sun position (conditional).
-
-        This step is only shown when no_sun_behavior is "set_to_percent".
-
-        Args:
-            user_input: The user input from the form.
-
-        Returns:
-            SubentryFlowResult showing form or proceeding to protection step.
-        """
-        if user_input is not None:
-            self._user_data.update(user_input)
-            return await self.async_step_reconfigure_protection()
-
-        config_subentry = self._get_reconfigure_subentry()
-        # Use existing value as default if available, otherwise use what's in _user_data
-        defaults = {**self._user_data, **config_subentry.data}
-
-        return self.async_show_form(
-            step_id="reconfigure_no_sun_position",
-            data_schema=get_no_sun_position_schema(defaults),
         )
 
     async def async_step_reconfigure_protection(
@@ -238,10 +162,6 @@ class CoverSubentryFlowHandler(ConfigSubentryFlow):
         if user_input is not None:
             # Merge all data from previous steps
             full_data = {**self._user_data, **user_input}
-
-            # Set default no_sun_position if not using "set_to_percent"
-            if full_data.get(CONF_NO_SUN_BEHAVIOR) != "set_to_percent":
-                full_data[CONF_NO_SUN_POSITION] = DEFAULT_NO_SUN_POSITION
 
             # Get updated title
             title = self._get_cover_title(

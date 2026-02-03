@@ -22,8 +22,6 @@ from custom_components.smart_venetian_blinds.const import (
     CONF_MAX_ANGLE,
     CONF_MIN_ANGLE,
     CONF_MINIMUM_TILT_CHANGE,
-    CONF_NO_SUN_BEHAVIOR,
-    CONF_NO_SUN_POSITION,
     CONF_REFLECTION_PROTECTION_ENABLED,
     CONF_REFLECTION_PROTECTION_MIN_TILT,
     CONF_RESPECT_MANUAL_CLOSE,
@@ -34,20 +32,11 @@ from custom_components.smart_venetian_blinds.const import (
     DEFAULT_MAX_ANGLE,
     DEFAULT_MIN_ANGLE,
     DEFAULT_MINIMUM_TILT_CHANGE,
-    DEFAULT_NO_SUN_BEHAVIOR,
-    DEFAULT_NO_SUN_POSITION,
     DEFAULT_REFLECTION_PROTECTION_ENABLED,
     DEFAULT_REFLECTION_PROTECTION_MIN_TILT,
     DEFAULT_RESPECT_MANUAL_CLOSE,
 )
 from homeassistant.helpers import selector
-
-NO_SUN_BEHAVIOR_OPTIONS: list[str] = [
-    "keep_last",
-    "open",
-    "close",
-    "set_to_percent",
-]
 
 
 def get_cover_tilt_schema(
@@ -68,6 +57,15 @@ def get_cover_tilt_schema(
     defaults = defaults or {}
 
     schema_dict: dict[Any, Any] = {}
+
+    if not show_entity_selector:
+        # Reconfigure mode: show enabled toggle at the top
+        schema_dict[
+            vol.Required(
+                CONF_COVER_ENABLED,
+                default=defaults.get(CONF_COVER_ENABLED, DEFAULT_COVER_ENABLED),
+            )
+        ] = selector.BooleanSelector()
 
     if show_entity_selector:
         schema_dict[vol.Required(CONF_COVER_ENTITY)] = selector.EntitySelector(
@@ -139,58 +137,10 @@ def get_cover_tilt_schema(
                     mode=selector.NumberSelectorMode.SLIDER,
                 ),
             ),
-            vol.Required(
-                CONF_NO_SUN_BEHAVIOR,
-                default=defaults.get(CONF_NO_SUN_BEHAVIOR, DEFAULT_NO_SUN_BEHAVIOR),
-            ): selector.SelectSelector(
-                selector.SelectSelectorConfig(
-                    options=NO_SUN_BEHAVIOR_OPTIONS,
-                    mode=selector.SelectSelectorMode.DROPDOWN,
-                    translation_key="no_sun_behavior",
-                ),
-            ),
-            vol.Required(
-                CONF_COVER_ENABLED,
-                default=defaults.get(CONF_COVER_ENABLED, DEFAULT_COVER_ENABLED),
-            ): selector.BooleanSelector(),
         },
     )
 
     return vol.Schema(schema_dict)
-
-
-def get_no_sun_position_schema(
-    defaults: Mapping[str, Any] | None = None,
-) -> vol.Schema:
-    """
-    Get schema for no-sun position sub-step.
-
-    This step is only shown when no_sun_behavior is "set_to_percent".
-
-    Args:
-        defaults: Optional dictionary of default values to pre-populate the form.
-
-    Returns:
-        Voluptuous schema for no-sun position configuration.
-    """
-    defaults = defaults or {}
-
-    return vol.Schema(
-        {
-            vol.Required(
-                CONF_NO_SUN_POSITION,
-                default=defaults.get(CONF_NO_SUN_POSITION, DEFAULT_NO_SUN_POSITION),
-            ): selector.NumberSelector(
-                selector.NumberSelectorConfig(
-                    min=0,
-                    max=100,
-                    step=1,
-                    unit_of_measurement="%",
-                    mode=selector.NumberSelectorMode.SLIDER,
-                ),
-            ),
-        }
-    )
 
 
 def get_protection_schema(
@@ -335,28 +285,6 @@ def get_cover_subentry_schema(
                 default=defaults.get(CONF_INVERT_TILT, DEFAULT_INVERT_TILT),
             ): selector.BooleanSelector(),
             vol.Required(
-                CONF_NO_SUN_BEHAVIOR,
-                default=defaults.get(CONF_NO_SUN_BEHAVIOR, DEFAULT_NO_SUN_BEHAVIOR),
-            ): selector.SelectSelector(
-                selector.SelectSelectorConfig(
-                    options=NO_SUN_BEHAVIOR_OPTIONS,
-                    mode=selector.SelectSelectorMode.DROPDOWN,
-                    translation_key="no_sun_behavior",
-                ),
-            ),
-            vol.Required(
-                CONF_NO_SUN_POSITION,
-                default=defaults.get(CONF_NO_SUN_POSITION, DEFAULT_NO_SUN_POSITION),
-            ): selector.NumberSelector(
-                selector.NumberSelectorConfig(
-                    min=0,
-                    max=100,
-                    step=1,
-                    unit_of_measurement="%",
-                    mode=selector.NumberSelectorMode.SLIDER,
-                ),
-            ),
-            vol.Required(
                 CONF_REFLECTION_PROTECTION_ENABLED,
                 default=defaults.get(
                     CONF_REFLECTION_PROTECTION_ENABLED,
@@ -433,6 +361,5 @@ __all__ = [
     "get_cover_reconfigure_schema",
     "get_cover_subentry_schema",
     "get_cover_tilt_schema",
-    "get_no_sun_position_schema",
     "get_protection_schema",
 ]

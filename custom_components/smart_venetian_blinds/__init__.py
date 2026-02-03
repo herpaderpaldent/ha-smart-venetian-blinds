@@ -97,15 +97,30 @@ async def async_setup_entry(
 
         # Get the calculation result (may be None when sun is below horizon)
         calculation = coordinator.data
+        state = entry.runtime_data.state
+        is_no_sun = calculation is None or calculation.sun_is_behind_facade
+
+        # Skip if the no-sun action was already applied this period
+        if is_no_sun and state.no_sun_action_applied:
+            LOGGER.debug(
+                "No-sun action already applied for group '%s', skipping",
+                entry.title,
+            )
+            return
 
         # Apply to covers (controller handles None via _handle_no_sun)
-        controller = CoverController(hass, sun_has_hit_facade=entry.runtime_data.state.sun_has_hit_facade)
+        controller = CoverController(hass, sun_has_hit_facade=state.sun_has_hit_facade)
         results = await controller.apply_to_all_covers(
             entry.subentries,
             calculation,
         )
 
         applied_count = sum(1 for applied in results.values() if applied)
+
+        # Mark no-sun action as applied so it doesn't repeat
+        if is_no_sun and applied_count > 0:
+            state.no_sun_action_applied = True
+
         LOGGER.debug(
             "Sun state change: applied tilt to %d/%d covers in group '%s'",
             applied_count,

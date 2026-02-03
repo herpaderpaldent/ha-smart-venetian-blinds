@@ -61,9 +61,7 @@
             "min_angle_deg": "Minimaler Winkel",
             "max_angle_deg": "Maximaler Winkel",
             "invert_tilt_percent": "Neigung invertieren",
-            "minimum_tilt_change_percent": "Minimale Neigungsänderung",
-            "no_sun_behavior": "Verhalten bei Sonne hinter Fassade",
-            "enabled": "Aktiviert"
+            "minimum_tilt_change_percent": "Minimale Neigungsänderung"
           },
           "data_description": {
             "cover_entity_id": "Die zu steuernde Abdeckungs-Entität",
@@ -72,19 +70,7 @@
             "min_angle_deg": "Minimale mechanische Neigungswinkelbeschränkung",
             "max_angle_deg": "Maximale mechanische Neigungswinkelbeschränkung",
             "invert_tilt_percent": "Neigungsprozent invertieren, falls die Abdeckung umgekehrte Semantik verwendet",
-            "minimum_tilt_change_percent": "Neigung nur anpassen, wenn die Änderung diesen Schwellenwert überschreitet (reduziert Motorverschleiß)",
-            "no_sun_behavior": "Was tun, wenn die Sonne unter dem Horizont oder hinter der Fassade ist",
-            "enabled": "Automatische Steuerung für diese Abdeckung aktivieren"
-          }
-        },
-        "no_sun_position": {
-          "title": "Position ohne Sonne",
-          "description": "Legen Sie die Neigungsposition fest, wenn die Sonne unter dem Horizont oder hinter der Fassade ist.",
-          "data": {
-            "no_sun_position_percent": "Neigungsposition"
-          },
-          "data_description": {
-            "no_sun_position_percent": "Neigungsprozent bei keinem direkten Sonnenlicht (0%=geschlossen, 100%=offen)"
+            "minimum_tilt_change_percent": "Neigung nur anpassen, wenn die Änderung diesen Schwellenwert überschreitet (reduziert Motorverschleiß)"
           }
         },
         "protection": {
@@ -97,7 +83,7 @@
             "manual_close_threshold_percent": "Schwellenwert für manuelles Schließen"
           },
           "data_description": {
-            "reflection_protection_enabled": "Automatisch minimale Neigung beibehalten, nachdem die Sonne die Fassade passiert hat, um Blendung durch reflektiertes Licht zu verhindern (z.B. von Balkonen). Deaktiviert sich bei Sonnenuntergang.",
+            "reflection_protection_enabled": "Automatisch minimale Neigung beibehalten, nachdem die Sonne die Fassade passiert hat, um Blendung durch reflektiertes Licht zu verhindern (z.B. von Balkonen). Deaktiviert sich bei Sonnenuntergang. Ohne Reflexionsschutz wird die Abdeckung vollständig geöffnet, wenn die Sonne nicht mehr auf die Fassade trifft.",
             "reflection_protection_min_tilt": "Minimale Neigung, die bei aktivem Reflexionsschutz beibehalten wird",
             "respect_manual_close": "Jalousien nicht stören, die manuell geschlossen wurden",
             "manual_close_threshold_percent": "Auto-Steuerung überspringen, wenn Neigung unter diesem Prozent liegt (Lamellen geschlossen = Schlafmodus)"
@@ -107,34 +93,22 @@
           "title": "Abdeckung & Neigungseinstellungen neu konfigurieren",
           "description": "Aktualisieren Sie das Neigungsverhalten der Abdeckung.",
           "data": {
+            "enabled": "Aktiviert",
             "name": "Benutzerdefinierter Name (optional)",
             "drive_position": "Fahrposition",
             "min_angle_deg": "Minimaler Winkel",
             "max_angle_deg": "Maximaler Winkel",
             "invert_tilt_percent": "Neigung invertieren",
-            "minimum_tilt_change_percent": "Minimale Neigungsänderung",
-            "no_sun_behavior": "Verhalten bei Sonne hinter Fassade",
-            "enabled": "Aktiviert"
+            "minimum_tilt_change_percent": "Minimale Neigungsänderung"
           },
           "data_description": {
+            "enabled": "Automatische Steuerung für diese Abdeckung aktivieren",
             "name": "Optionaler benutzerdefinierter Name für diese Abdeckung",
             "drive_position": "Position, zu der die Abdeckung vor dem Neigen fährt (0%=geschlossen, 100%=offen)",
             "min_angle_deg": "Minimale mechanische Neigungswinkelbeschränkung",
             "max_angle_deg": "Maximale mechanische Neigungswinkelbeschränkung",
             "invert_tilt_percent": "Neigungsprozent invertieren, falls die Abdeckung umgekehrte Semantik verwendet",
-            "minimum_tilt_change_percent": "Neigung nur anpassen, wenn die Änderung diesen Schwellenwert überschreitet (reduziert Motorverschleiß)",
-            "no_sun_behavior": "Was tun, wenn die Sonne unter dem Horizont oder hinter der Fassade ist",
-            "enabled": "Automatische Steuerung für diese Abdeckung aktivieren"
-          }
-        },
-        "reconfigure_no_sun_position": {
-          "title": "Position ohne Sonne",
-          "description": "Legen Sie die Neigungsposition fest, wenn die Sonne unter dem Horizont oder hinter der Fassade ist.",
-          "data": {
-            "no_sun_position_percent": "Neigungsposition"
-          },
-          "data_description": {
-            "no_sun_position_percent": "Neigungsprozent bei keinem direkten Sonnenlicht (0%=geschlossen, 100%=offen)"
+            "minimum_tilt_change_percent": "Neigung nur anpassen, wenn die Änderung diesen Schwellenwert überschreitet (reduziert Motorverschleiß)"
           }
         },
         "reconfigure_protection": {
@@ -147,7 +121,7 @@
             "manual_close_threshold_percent": "Schwellenwert für manuelles Schließen"
           },
           "data_description": {
-            "reflection_protection_enabled": "Automatisch minimale Neigung beibehalten, nachdem die Sonne die Fassade passiert hat, um Blendung durch reflektiertes Licht zu verhindern (z.B. von Balkonen). Deaktiviert sich bei Sonnenuntergang.",
+            "reflection_protection_enabled": "Automatisch minimale Neigung beibehalten, nachdem die Sonne die Fassade passiert hat, um Blendung durch reflektiertes Licht zu verhindern (z.B. von Balkonen). Deaktiviert sich bei Sonnenuntergang. Ohne Reflexionsschutz wird die Abdeckung vollständig geöffnet, wenn die Sonne nicht mehr auf die Fassade trifft.",
             "reflection_protection_min_tilt": "Minimale Neigung, die bei aktivem Reflexionsschutz beibehalten wird",
             "respect_manual_close": "Jalousien nicht stören, die manuell geschlossen wurden",
             "manual_close_threshold_percent": "Auto-Steuerung überspringen, wenn Neigung unter diesem Prozent liegt (Lamellen geschlossen = Schlafmodus)"
@@ -175,16 +149,6 @@
           "change_threshold_deg": "Minimale Winkeländerung (in Grad), um ein Update auszulösen",
           "min_update_interval_sec": "Minimale Zeit (in Sekunden) zwischen Abdeckungs-Updates"
         }
-      }
-    }
-  },
-  "selector": {
-    "no_sun_behavior": {
-      "options": {
-        "keep_last": "Letzte Position beibehalten",
-        "open": "Vollständig öffnen",
-        "close": "Vollständig schließen",
-        "set_to_percent": "Auf bestimmten Prozentsatz setzen"
       }
     }
   },

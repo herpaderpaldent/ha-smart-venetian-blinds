@@ -39,6 +39,10 @@ class GroupState:
     # Whether the sun has actively hit the facade during this solar cycle
     sun_has_hit_facade: bool = False
 
+    # Whether the no-sun action (open or reflection protection) has already been applied
+    # this no-sun period. Resets when the sun starts hitting the facade again.
+    no_sun_action_applied: bool = False
+
     # Cover states for manual close detection (entity_id -> last known position)
     cover_positions: dict[str, float] = field(default_factory=dict)
 

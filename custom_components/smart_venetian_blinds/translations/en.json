@@ -61,9 +61,7 @@
             "min_angle_deg": "Minimum angle",
             "max_angle_deg": "Maximum angle",
             "invert_tilt_percent": "Invert tilt",
-            "minimum_tilt_change_percent": "Minimum tilt change",
-            "no_sun_behavior": "Behavior when sun is behind facade",
-            "enabled": "Enabled"
+            "minimum_tilt_change_percent": "Minimum tilt change"
           },
           "data_description": {
             "cover_entity_id": "The cover entity to control",
@@ -72,19 +70,7 @@
             "min_angle_deg": "Minimum mechanical tilt angle constraint",
             "max_angle_deg": "Maximum mechanical tilt angle constraint",
             "invert_tilt_percent": "Invert tilt percent if cover uses reversed semantics",
-            "minimum_tilt_change_percent": "Only adjust tilt if change exceeds this threshold (reduces motor wear)",
-            "no_sun_behavior": "What to do when sun is below horizon or behind facade",
-            "enabled": "Enable automatic control for this cover"
-          }
-        },
-        "no_sun_position": {
-          "title": "No-Sun Position",
-          "description": "Set the tilt position when sun is below horizon or behind facade.",
-          "data": {
-            "no_sun_position_percent": "Tilt position"
-          },
-          "data_description": {
-            "no_sun_position_percent": "Tilt percent when no direct sunlight (0%=closed, 100%=open)"
+            "minimum_tilt_change_percent": "Only adjust tilt if change exceeds this threshold (reduces motor wear)"
           }
         },
         "protection": {
@@ -97,7 +83,7 @@
             "manual_close_threshold_percent": "Manual close threshold"
           },
           "data_description": {
-            "reflection_protection_enabled": "Automatically keep minimum tilt after the sun has passed the facade to prevent glare from reflected light (e.g., from balconies). Deactivates when the sun sets.",
+            "reflection_protection_enabled": "Automatically keep minimum tilt after the sun has passed the facade to prevent glare from reflected light (e.g., from balconies). Deactivates when the sun sets. Without reflection protection, the cover fully opens when the sun is no longer hitting the facade.",
             "reflection_protection_min_tilt": "Minimum tilt to maintain when reflection protection is active",
             "respect_manual_close": "Don't disturb blinds that appear manually closed",
             "manual_close_threshold_percent": "Skip auto-control if tilt is below this percent (slats closed = sleep mode)"
@@ -107,34 +93,22 @@
           "title": "Reconfigure Cover & Tilt Settings",
           "description": "Update the cover tilt behavior.",
           "data": {
+            "enabled": "Enabled",
             "name": "Custom name (optional)",
             "drive_position": "Drive position",
             "min_angle_deg": "Minimum angle",
             "max_angle_deg": "Maximum angle",
             "invert_tilt_percent": "Invert tilt",
-            "minimum_tilt_change_percent": "Minimum tilt change",
-            "no_sun_behavior": "Behavior when sun is behind facade",
-            "enabled": "Enabled"
+            "minimum_tilt_change_percent": "Minimum tilt change"
           },
           "data_description": {
+            "enabled": "Enable automatic control for this cover",
             "name": "Optional custom name for this cover",
             "drive_position": "Position to drive cover to before tilting (0%=closed, 100%=open)",
             "min_angle_deg": "Minimum mechanical tilt angle constraint",
             "max_angle_deg": "Maximum mechanical tilt angle constraint",
             "invert_tilt_percent": "Invert tilt percent if cover uses reversed semantics",
-            "minimum_tilt_change_percent": "Only adjust tilt if change exceeds this threshold (reduces motor wear)",
-            "no_sun_behavior": "What to do when sun is below horizon or behind facade",
-            "enabled": "Enable automatic control for this cover"
-          }
-        },
-        "reconfigure_no_sun_position": {
-          "title": "No-Sun Position",
-          "description": "Set the tilt position when sun is below horizon or behind facade.",
-          "data": {
-            "no_sun_position_percent": "Tilt position"
-          },
-          "data_description": {
-            "no_sun_position_percent": "Tilt percent when no direct sunlight (0%=closed, 100%=open)"
+            "minimum_tilt_change_percent": "Only adjust tilt if change exceeds this threshold (reduces motor wear)"
           }
         },
         "reconfigure_protection": {
@@ -147,7 +121,7 @@
             "manual_close_threshold_percent": "Manual close threshold"
           },
           "data_description": {
-            "reflection_protection_enabled": "Automatically keep minimum tilt after the sun has passed the facade to prevent glare from reflected light (e.g., from balconies). Deactivates when the sun sets.",
+            "reflection_protection_enabled": "Automatically keep minimum tilt after the sun has passed the facade to prevent glare from reflected light (e.g., from balconies). Deactivates when the sun sets. Without reflection protection, the cover fully opens when the sun is no longer hitting the facade.",
             "reflection_protection_min_tilt": "Minimum tilt to maintain when reflection protection is active",
             "respect_manual_close": "Don't disturb blinds that appear manually closed",
             "manual_close_threshold_percent": "Skip auto-control if tilt is below this percent (slats closed = sleep mode)"
@@ -175,16 +149,6 @@
           "change_threshold_deg": "Minimum angle change (in degrees) to trigger an update",
           "min_update_interval_sec": "Minimum time (in seconds) between cover updates"
         }
-      }
-    }
-  },
-  "selector": {
-    "no_sun_behavior": {
-      "options": {
-        "keep_last": "Keep last position",
-        "open": "Fully open",
-        "close": "Fully close",
-        "set_to_percent": "Set to specific percent"
       }
     }
   },
