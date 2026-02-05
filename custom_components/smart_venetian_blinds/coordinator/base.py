@@ -146,8 +146,9 @@ class SmartVenetianBlindsDataUpdateCoordinator(DataUpdateCoordinator[SlatCalcula
         # Update sun_has_hit_facade tracking
         state = self.config_entry.runtime_data.state
         if result is None:
-            # Sun below horizon: reset flag
+            # Sun below horizon: reset flags for new solar day
             state.sun_has_hit_facade = False
+            state.no_sun_action_applied = False
         elif not result.sun_is_behind_facade:
             # Sun is on facade (even at angle 0°): mark as hit
             state.sun_has_hit_facade = True
