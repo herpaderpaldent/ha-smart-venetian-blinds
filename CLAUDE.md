@@ -57,9 +57,14 @@ custom_components/smart_venetian_blinds/
 ├── __init__.py              # Entry setup, sun listener, event-driven cover control
 ├── const.py                 # All constants and configuration keys
 ├── data.py                  # Runtime data types (SmartVenetianBlindsData)
+├── diagnostics.py           # Diagnostic data for troubleshooting
+├── repairs.py               # Repair flows for fixing issues
 ├── coordinator/             # DataUpdateCoordinator for slat calculations
 │   ├── base.py              # Main coordinator class
-│   └── state.py             # GroupState (throttling, auto_control flag)
+│   ├── state.py             # GroupState (throttling, auto_control, no-sun tracking)
+│   ├── data_processing.py   # Data validation and transformation
+│   ├── error_handling.py    # Error recovery and retry logic
+│   └── listeners.py         # Entity callbacks and event listeners
 ├── sun/                     # Sun position handling
 │   ├── provider.py          # SunDataProvider (reads sun.sun or sensors)
 │   ├── listener.py          # SunStateListener (debounced state tracking)
@@ -68,13 +73,16 @@ custom_components/smart_venetian_blinds/
 │   └── controller.py        # CoverController (drive-then-tilt logic)
 ├── config_flow_handler/     # Config flow implementation
 │   ├── config_flow.py       # Main ConfigFlow class
+│   ├── options_flow.py      # Options flow
 │   ├── subentry_flow.py     # Cover subentry flow
-│   ├── schemas/             # Form schemas (group, cover, options)
-│   └── validators/          # Input validation and sanitizers
+│   ├── schemas/             # Form schemas (group, cover_subentry, options)
+│   └── validators/          # Input sanitizers
 ├── entity/                  # Base entity class
+├── entity_utils/            # Device info and state helpers
 ├── sensor/                  # Sensor platform (slat angle, sun position)
 ├── switch/                  # Switch platform (auto_control toggle)
-└── service_actions/         # Service implementations (apply_now)
+├── service_actions/         # Service implementations (apply_now)
+└── utils/                   # String helpers and validators
 ```
 
 ### Key Concepts

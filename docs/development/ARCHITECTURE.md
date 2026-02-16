@@ -6,124 +6,130 @@ This document describes the technical architecture of the Smart Venetian Blinds 
 
 ```text
 custom_components/smart_venetian_blinds/
-├── __init__.py              # Integration setup and unload
-├── config_flow.py           # Config flow entry point
+├── __init__.py              # Integration setup, sun listener wiring, event-driven cover control
+├── config_flow.py           # Config flow entry point (delegates to config_flow_handler)
 ├── const.py                 # Constants and configuration keys
+├── data.py                  # Runtime data types (SmartVenetianBlindsData)
+├── diagnostics.py           # Diagnostic data for troubleshooting
+├── manifest.json            # Integration metadata
+├── repairs.py               # Repair flows for fixing issues
+├── services.yaml            # Service action definitions
 ├── coordinator/             # Data update coordinator package
 │   ├── __init__.py          # Exports SmartVenetianBlindsDataUpdateCoordinator
 │   ├── base.py              # Main coordinator class
+│   ├── state.py             # GroupState (throttling, auto_control, no-sun tracking)
 │   ├── data_processing.py   # Data validation and transformation
 │   ├── error_handling.py    # Error recovery and retry logic
 │   └── listeners.py         # Entity callbacks and event listeners
-├── data.py                  # Data classes and type definitions
-├── diagnostics.py           # Diagnostic data for troubleshooting
-├── entity/                  # Base entity package
-│   ├── __init__.py          # Exports SmartVenetianBlindsEntity
-│   └── base.py              # Base entity class implementation
-├── manifest.json            # Integration metadata
-├── repairs.py               # Repair flows for fixing issues
-├── services.yaml            # Service action definitions (legacy filename)
-├── api/                     # External API communication
+├── sun/                     # Sun position handling
 │   ├── __init__.py
-│   └── client.py            # API client implementation
+│   ├── provider.py          # SunDataProvider (reads sun.sun or solar sensors)
+│   ├── listener.py          # SunStateListener (debounced state tracking)
+│   └── math.py              # Slat angle calculations, SunPosition, SlatCalculationResult
+├── cover_control/           # Cover tilt application
+│   ├── __init__.py
+│   └── controller.py        # CoverController (drive-then-tilt logic)
 ├── config_flow_handler/     # Config flow implementation
 │   ├── __init__.py          # Package exports
 │   ├── handler.py           # Backward compatibility wrapper
-│   ├── config_flow.py       # Main config flow (user, reauth, reconfigure)
+│   ├── config_flow.py       # Main config flow (user setup, reconfigure)
 │   ├── options_flow.py      # Options flow
-│   ├── subentry_flow.py     # Subentry flow template
+│   ├── subentry_flow.py     # Cover subentry flow
 │   ├── schemas/             # Voluptuous schemas
-│   │   ├── __init__.py      # Schema exports
-│   │   ├── config.py        # Config flow schemas
+│   │   ├── __init__.py
+│   │   ├── group.py         # Window group schemas
+│   │   ├── cover_subentry.py # Cover subentry schemas
 │   │   └── options.py       # Options flow schemas
 │   └── validators/          # Input validation
-│       ├── __init__.py      # Validator exports
-│       ├── credentials.py   # Credential validation
+│       ├── __init__.py
 │       └── sanitizers.py    # Input sanitizers
+├── entity/                  # Base entity package
+│   ├── __init__.py          # Exports SmartVenetianBlindsEntity
+│   └── base.py              # Base entity class implementation
 ├── entity_utils/            # Entity helper utilities
 │   ├── __init__.py
 │   ├── device_info.py       # Device information helpers
 │   └── state_helpers.py     # State management utilities
+├── sensor/                  # Sensor platform (slat angle, sun position)
+│   ├── __init__.py          # Platform setup
+│   └── slat_sensors.py      # Slat angle and sun position sensor entities
+├── switch/                  # Switch platform (auto_control toggle)
+│   ├── __init__.py          # Platform setup
+│   └── auto_control.py      # Auto control switch entity
 ├── service_actions/         # Service action implementations
 │   ├── __init__.py
-│   └── example_service.py   # Example service action handler
-├── translations/            # Localization files
-│   └── en.json              # English translations
-└── <platform>/              # Platform-specific implementations
-    ├── __init__.py          # Platform setup
-    └── <entity>.py          # Individual entity implementations
+│   └── apply_now.py         # Force-apply current calculation to covers
+├── utils/                   # General utilities
+│   ├── __init__.py
+│   ├── string_helpers.py    # String manipulation helpers
+│   └── validators.py        # General validation utilities
+└── translations/            # Localization files
+    ├── en.json              # English translations
+    └── de.json              # German translations
 ```
 
 ## Core Components
+
+### Sun Position Provider
+
+**Directory:** `sun/`
+
+The sun package reads solar position data and drives all integration updates. This integration has no external API — all computation is local based on sun position.
+
+**Package structure:**
+
+- `provider.py` - `SunDataProvider`: reads azimuth and elevation from `sun.sun` entity or dedicated solar sensors
+- `listener.py` - `SunStateListener`: listens for sun entity state changes with debouncing to avoid excessive updates
+- `math.py` - Core slat angle calculations given sun position, facade azimuth, and slat geometry (`SunPosition`, `SlatCalculationResult`)
 
 ### Data Update Coordinator
 
 **Directory:** `coordinator/`
 
-The coordinator package manages periodic data fetching from the external API and distributes
-updates to all entities. It is organized as a package with separate modules for different concerns:
+The coordinator receives sun position updates from the listener and computes optimal slat angles for each window group.
 
 **Package structure:**
 
 - `base.py` - Main coordinator class (`SmartVenetianBlindsDataUpdateCoordinator`)
-- `data_processing.py` - Data validation, transformation, and caching utilities
-- `error_handling.py` - Error recovery strategies, retry logic, and circuit breaker patterns
-- `listeners.py` - Entity callbacks, event listeners, and performance monitoring
+- `state.py` - `GroupState` dataclass: holds calculation results, throttling state, auto-control flag, and no-sun tracking
+- `data_processing.py` - Data validation and transformation
+- `error_handling.py` - Error recovery and retry logic
+- `listeners.py` - Entity callbacks and event listeners
 
 **Core functionality:**
 
-- Configurable update interval (default: 5 minutes)
-- Error handling with exponential backoff
-- Shared data access for all entities
-- Automatic retry on transient failures
-- Data validation and transformation before distribution
-- Performance monitoring and metrics
+- Event-driven updates triggered by sun position changes (not polling)
+- Per-group throttling with configurable angle threshold and minimum interval
+- Tracks whether sun has hit the facade in the current solar cycle
+- One-shot no-sun action (open or reflection protection) when sun leaves facade
 
 **Key class:** `SmartVenetianBlindsDataUpdateCoordinator` (exported from `coordinator/__init__.py`)
 
-**Design rationale:**
+### Cover Controller
 
-The coordinator is structured as a package rather than a single file to support future extensibility:
+**Directory:** `cover_control/`
 
-- **Separation of concerns**: Core logic, error handling, and data processing are isolated
-- **Easy extension**: New features (caching, metrics, webhooks) can be added as new modules
-- **Maintainability**: Individual modules stay focused and manageable (<400 lines)
-- **Testability**: Each module can be tested independently
+Applies calculated slat angles to physical cover entities.
 
-### API Client
+**Key class:** `CoverController`
 
-**Directory:** `api/`
-
-Handles all communication with external APIs or devices. Implements:
-
-- Async HTTP requests using `aiohttp`
-- Connection management and timeouts
-- Authentication handling
-- Error translation to custom exceptions
-
-**Key class:** `SmartVenetianBlindsApiClient`
+- Implements drive-then-tilt pattern: first drives cover to target position, then applies tilt angle
+- Handles tilt inversion for covers with reversed tilt direction
+- Respects manual close detection ("sleep mode") to avoid overriding user-closed blinds
 
 ### Config Flow
 
 **Directory:** `config_flow_handler/`
 
-Implements the configuration UI for adding and configuring the integration. The package
-is organized modularly to support complex flows without becoming monolithic.
+Implements the configuration UI for adding and configuring window groups and covers.
 
 **Structure:**
 
-- `config_flow.py`: Main flow (user setup, reauth, reconfigure)
+- `config_flow.py`: Main flow (user setup, reconfigure)
 - `options_flow.py`: Options flow for post-setup configuration
-- `schemas/`: Voluptuous schemas for all forms
-- `validators/`: Validation logic separated from flow logic
-- `subentry_flow.py`: Template for multi-device/location support
-
-**Supported flows:**
-
-- Initial user setup with validation
-- Options flow for reconfiguration
-- Reauthentication flow for expired credentials
-- Ready for subentry flows (multi-device support)
+- `subentry_flow.py`: Cover subentry flow for adding individual covers to a group
+- `schemas/`: Voluptuous schemas for group, cover, and options forms
+- `validators/`: Input sanitization logic
 
 **Key classes:**
 
@@ -137,7 +143,7 @@ is organized modularly to support complex flows without becoming monolithic.
 Provides common functionality for all entities in the integration:
 
 - Device information
-- Unique ID generation
+- Unique ID generation (`{entry_id}_{description.key}`)
 - Coordinator integration
 - Availability tracking
 
@@ -145,13 +151,18 @@ Provides common functionality for all entities in the integration:
 
 ## Platform Organization
 
-Each platform (sensor, binary_sensor, switch, etc.) follows this pattern:
+Each platform (sensor, switch) follows this pattern:
 
 ```text
 <platform>/
 ├── __init__.py              # Platform setup: async_setup_entry()
 └── <entity_name>.py         # Individual entity implementation
 ```
+
+**Current platforms:**
+
+- `sensor/` - Slat angle and sun position sensors
+- `switch/` - Auto control toggle per window group
 
 Platform entities inherit from both:
 
@@ -161,26 +172,25 @@ Platform entities inherit from both:
 ## Data Flow
 
 ```text
-┌─────────────────┐
-│  Config Entry   │ ← Created by config flow
-└────────┬────────┘
+Sun Entity Changes
+       │
+       ▼
+┌──────────────────┐
+│  SunStateListener │ ← Debounced state change tracking
+└────────┬─────────┘
          │
          ▼
-┌─────────────────┐
-│   Coordinator   │ ← Fetches data from API every 5 min
-└────────┬────────┘
-         │
-         ▼
-    ┌────┴────┐
-    │  Data   │ ← Stored in coordinator.data
-    └────┬────┘
+┌──────────────────┐
+│   Coordinator    │ ← Calculates slat angles per group
+└────────┬─────────┘
          │
     ┌────┴────────────────┐
     │                     │
     ▼                     ▼
-┌─────────┐         ┌─────────┐
-│ Sensor  │         │ Switch  │ ← Entities read from coordinator
-└─────────┘         └─────────┘
+┌─────────────┐    ┌────────────────┐
+│ Sensor      │    │ CoverController│ ← Only if auto_control enabled
+│ Entities    │    │ (drive + tilt) │
+└─────────────┘    └────────────────┘
 ```
 
 ## Key Design Decisions
@@ -188,8 +198,6 @@ Platform entities inherit from both:
 See [DECISIONS.md](./DECISIONS.md) for architectural and design decisions made during development.
 
 ## Extension Points
-
-To add new functionality:
 
 ### Adding a New Platform
 
@@ -201,28 +209,32 @@ To add new functionality:
 ### Adding a New Service Action
 
 1. Create service action handler in `service_actions/<service_name>.py`
-2. Define service action in `services.yaml` (legacy filename) with schema
+2. Define service action in `services.yaml` with schema
 3. Register service action in `__init__.py:async_setup()` (NOT `async_setup_entry`)
 
-### Modifying Data Structure
+### Modifying Calculation Logic
 
-1. Update coordinator data type in `coordinator.py`
-2. Adjust API client response parsing in `api/client.py`
-3. Update entity property implementations to match new structure
+1. Update sun math in `sun/math.py`
+2. Adjust coordinator data processing if new inputs are needed
+3. Update sensor entities to expose any new calculated values
 
 ## Testing Strategy
 
 - **Unit tests:** Test individual functions and classes in isolation
-- **Integration tests:** Test coordinator with mocked API
 - **Fixtures:** Shared test fixtures in `tests/conftest.py`
 
-Tests mirror the source structure under `tests/`.
+Tests mirror the source structure under `tests/unit/`:
+
+- `tests/unit/sun/test_math.py` - Slat angle calculation tests
+- `tests/unit/sun/test_provider.py` - Sun data provider tests
+- `tests/unit/cover_control/test_controller.py` - Cover controller tests
+- `tests/unit/coordinator/test_state.py` - Group state tests
 
 ## Dependencies
 
 Core dependencies (see `manifest.json`):
 
-- `aiohttp` - Async HTTP client
-- Home Assistant 2026.7.0+ - Platform requirements
+- `sun` - Home Assistant sun integration (provides solar position data)
+- Home Assistant (no minimum version pinned in manifest)
 
 Development dependencies (see `requirements_dev.txt`, `requirements_test.txt`).
