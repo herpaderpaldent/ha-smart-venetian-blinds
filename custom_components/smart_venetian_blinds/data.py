@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from .coordinator.state import GroupState
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Coroutine
+    from typing import Any
+
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.loader import Integration
 
@@ -33,6 +36,7 @@ class SmartVenetianBlindsData:
     coordinator: SmartVenetianBlindsDataUpdateCoordinator
     integration: Integration
     state: GroupState
+    apply_cover_tilts: Callable[[], Coroutine[Any, Any, None]] | None = field(default=None, repr=False)
 
     @property
     def auto_control_enabled(self) -> bool:

@@ -128,6 +128,9 @@ async def async_setup_entry(
             entry.title,
         )
 
+    # Store closure on runtime data for switch re-enable
+    entry.runtime_data.apply_cover_tilts = apply_cover_tilts
+
     # Create sync callback wrapper for sun state changes
     def on_sun_state_change() -> None:
         """Handle sun state change: update coordinator and schedule cover tilt application."""

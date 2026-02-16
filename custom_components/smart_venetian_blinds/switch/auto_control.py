@@ -54,9 +54,14 @@ class AutoControlSwitch(CoordinatorEntity[SmartVenetianBlindsDataUpdateCoordinat
         return self.coordinator.config_entry.runtime_data.auto_control_enabled
 
     async def async_turn_on(self, **kwargs: Any) -> None:
-        """Enable auto control."""
-        self.coordinator.config_entry.runtime_data.auto_control_enabled = True
+        """Enable auto control and immediately re-apply cover positions."""
+        runtime_data = self.coordinator.config_entry.runtime_data
+        runtime_data.state.reset_for_fresh_start()
+        runtime_data.auto_control_enabled = True
         self.async_write_ha_state()
+        self.coordinator.trigger_update()
+        if runtime_data.apply_cover_tilts is not None:
+            await runtime_data.apply_cover_tilts()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Disable auto control."""

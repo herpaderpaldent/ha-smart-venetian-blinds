@@ -85,3 +85,14 @@ class GroupState:
     def reset_throttle(self) -> None:
         """Reset throttle state to allow immediate application."""
         self.last_applied_time = None
+
+    def reset_for_fresh_start(self) -> None:
+        """Reset state to behave as if freshly initialized.
+
+        Clears sun_has_hit_facade, no_sun_action_applied, and throttle state
+        so the next apply_cover_tilts call fully re-evaluates drive-then-tilt.
+        """
+        self.sun_has_hit_facade = False
+        self.no_sun_action_applied = False
+        self.last_applied_angle = None
+        self.last_applied_time = None
