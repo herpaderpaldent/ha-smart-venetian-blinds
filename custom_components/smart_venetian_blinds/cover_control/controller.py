@@ -259,8 +259,11 @@ class CoverController:
             return False
 
         if behavior == "open":
-            LOGGER.debug("No sun, opening %s", config.entity_id)
-            await self._set_cover_tilt(config.entity_id, 100.0)
+            current_position = self._get_cover_position(config.entity_id)
+            if current_position is not None and abs(current_position - 100) > self.POSITION_TOLERANCE_PERCENT:
+                LOGGER.debug("No sun, raising %s to 100%%", config.entity_id)
+                await self._set_cover_position(config.entity_id, 100)
+                await self._wait_for_position(config.entity_id, 100)
             return True
 
         if behavior == "close":
