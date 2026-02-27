@@ -174,20 +174,50 @@ class TestHandleNoSun:
         mock_controller._hass.services.async_call.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_open_sets_tilt_100(
+    async def test_open_raises_position_to_100(
         self, mock_controller: CoverController, cover_config_no_sun_open: CoverConfig
     ) -> None:
-        """open behavior sets tilt to 100%."""
+        """open behavior raises cover to 100% position (no tilt call needed when fully retracted)."""
+        mock_controller._hass.states.get.return_value = create_mock_state(
+            state="open",
+            attributes={"current_position": 80},
+        )
+        mock_controller._wait_for_position = AsyncMock(return_value=True)
+
         result = await mock_controller._handle_no_sun(cover_config_no_sun_open)
 
         assert result is True
         mock_controller._hass.services.async_call.assert_called_once()
         call_args = mock_controller._hass.services.async_call.call_args
-        assert call_args[0][0] == "cover"
-        assert call_args[0][1] == "set_cover_tilt_position"
-        # Service data is the 3rd positional argument
-        service_data = call_args[0][2]
-        assert service_data["tilt_position"] == 100
+        assert call_args[0][1] == "set_cover_position"
+        assert call_args[0][2]["position"] == 100
+
+    @pytest.mark.asyncio
+    async def test_open_skips_position_when_already_at_100(
+        self, mock_controller: CoverController, cover_config_no_sun_open: CoverConfig
+    ) -> None:
+        """open behavior does nothing when cover is already at 100%."""
+        mock_controller._hass.states.get.return_value = create_mock_state(
+            state="open",
+            attributes={"current_position": 100},
+        )
+
+        result = await mock_controller._handle_no_sun(cover_config_no_sun_open)
+
+        assert result is True
+        mock_controller._hass.services.async_call.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_open_skips_position_when_unavailable(
+        self, mock_controller: CoverController, cover_config_no_sun_open: CoverConfig
+    ) -> None:
+        """open behavior does nothing when entity is unavailable."""
+        mock_controller._hass.states.get.return_value = None
+
+        result = await mock_controller._handle_no_sun(cover_config_no_sun_open)
+
+        assert result is True
+        mock_controller._hass.services.async_call.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_close_sets_tilt_0(
@@ -626,6 +656,10 @@ class TestReflectionProtection:
     async def test_handle_no_sun_falls_back_when_sun_not_hit(self, mock_hass: MagicMock) -> None:
         """When sun hasn't hit facade yet, uses normal no_sun_behavior."""
         mock_hass.services.async_call = AsyncMock()
+        mock_hass.states.get.return_value = create_mock_state(
+            state="open",
+            attributes={"current_position": 100},  # Already at 100%, position call skipped
+        )
         controller = CoverController(mock_hass, sun_has_hit_facade=False)
 
         config = CoverConfig(
@@ -649,7 +683,5 @@ class TestReflectionProtection:
         result = await controller._handle_no_sun(config)
 
         assert result is True
-        controller._hass.services.async_call.assert_called_once()
-        call_args = controller._hass.services.async_call.call_args
-        service_data = call_args[0][2]
-        assert service_data["tilt_position"] == 100  # "open" behavior
+        # Position already at 100%, no service call needed
+        controller._hass.services.async_call.assert_not_called()
