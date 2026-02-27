@@ -109,7 +109,10 @@ async def async_setup_entry(
             return
 
         # Apply to covers (controller handles None via _handle_no_sun)
-        controller = CoverController(hass, sun_has_hit_facade=state.sun_has_hit_facade)
+        controller = CoverController(
+            hass,
+            sun_has_hit_facade=state.sun_has_hit_facade,
+        )
         results = await controller.apply_to_all_covers(
             entry.subentries,
             calculation,
