@@ -3,6 +3,7 @@
 [![GitHub Release][releases-shield]][releases]
 [![GitHub Activity][commits-shield]][commits]
 [![License][license-shield]](LICENSE)
+[![Tests][tests-shield]][tests]
 
 [![hacs][hacsbadge]][hacs]
 ![Project Maintenance][maintenance-shield]
@@ -162,4 +163,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 [maintenance-shield]: https://img.shields.io/badge/maintainer-%40herpaderpaldent-blue.svg?style=for-the-badge
 [releases-shield]: https://img.shields.io/github/release/herpaderpaldent/ha-smart-venetian-blinds.svg?style=for-the-badge
 [releases]: https://github.com/herpaderpaldent/ha-smart-venetian-blinds/releases
+[tests-shield]: https://github.com/herpaderpaldent/ha-smart-venetian-blinds/actions/workflows/tests.yml/badge.svg
+[tests]: https://github.com/herpaderpaldent/ha-smart-venetian-blinds/actions/workflows/tests.yml
 [user_profile]: https://github.com/herpaderpaldent
