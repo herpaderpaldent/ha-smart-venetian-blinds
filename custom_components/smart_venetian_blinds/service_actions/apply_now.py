@@ -32,8 +32,6 @@ async def async_handle_apply_now(hass: HomeAssistant, call: ServiceCall) -> None
         LOGGER.warning("No config entries found for %s", DOMAIN)
         return
 
-    controller = CoverController(hass)
-
     for entry in entries:
         if not entry.runtime_data:
             continue
@@ -47,7 +45,8 @@ async def async_handle_apply_now(hass: HomeAssistant, call: ServiceCall) -> None
             continue
 
         # Reset throttle to allow immediate application
-        entry.runtime_data.state.reset_throttle()
+        state = entry.runtime_data.state
+        state.reset_throttle()
 
         # Trigger coordinator update
         coordinator = entry.runtime_data.coordinator
@@ -56,7 +55,10 @@ async def async_handle_apply_now(hass: HomeAssistant, call: ServiceCall) -> None
         # Get the new calculation result
         calculation = coordinator.data
 
-        # Apply to all covers
+        controller = CoverController(
+            hass,
+            sun_has_hit_facade=state.sun_has_hit_facade,
+        )
         results = await controller.apply_to_all_covers(
             entry.subentries,
             calculation,

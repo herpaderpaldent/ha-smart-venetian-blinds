@@ -220,11 +220,26 @@ class TestHandleNoSun:
         mock_controller._hass.services.async_call.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_close_sets_tilt_0(
-        self, mock_controller: CoverController, cover_config_no_sun_close: CoverConfig
-    ) -> None:
-        """close behavior sets tilt to 0%."""
-        result = await mock_controller._handle_no_sun(cover_config_no_sun_close)
+    async def test_close_sets_tilt_0(self, mock_controller: CoverController) -> None:
+        """close behavior sets tilt to 0% when respect_manual_close is disabled."""
+        config = CoverConfig(
+            entity_id="cover.close_blinds",
+            drive_position=100,
+            min_angle=0,
+            max_angle=90,
+            invert_tilt=False,
+            no_sun_behavior="close",
+            no_sun_position=50,
+            respect_manual_close=False,
+            manual_close_threshold=30,
+            minimum_tilt_change=5,
+            enabled=True,
+            reflection_protection_enabled=False,
+            reflection_protection_min_tilt=50,
+            reflection_protection_start_time="09:00",
+            reflection_protection_end_time="17:00",
+        )
+        result = await mock_controller._handle_no_sun(config)
 
         assert result is True
         mock_controller._hass.services.async_call.assert_called_once()
@@ -346,7 +361,7 @@ class TestApplyCalculation:
         mock_hass: MagicMock,
         calculation_result_direct_sun: SlatCalculationResult,
     ) -> None:
-        """Respects manual close when tilt below threshold (sleep mode)."""
+        """Respects manual close when tilt below threshold."""
         mock_hass.states.get.return_value = create_mock_state(
             state="closed",
             attributes={"current_position": 20, "current_tilt_position": 2},  # Tilt below 5% threshold
@@ -375,6 +390,98 @@ class TestApplyCalculation:
         result = await controller.apply_calculation(config, calculation_result_direct_sun)
 
         assert result is False
+
+    @pytest.mark.asyncio
+    async def test_clamp_prevents_setting_below_threshold(
+        self,
+        mock_hass: MagicMock,
+    ) -> None:
+        """When sun requires 0% tilt, integration clamps to threshold to preserve manual-close invariant."""
+        mock_hass.states.get.return_value = create_mock_state(
+            state="open",
+            attributes={"current_position": 100, "current_tilt_position": 50},
+        )
+        mock_hass.services.async_call = AsyncMock()
+        controller = CoverController(mock_hass)
+
+        config = CoverConfig(
+            entity_id="cover.test",
+            drive_position=100,
+            min_angle=0,
+            max_angle=90,
+            invert_tilt=False,
+            no_sun_behavior="keep_last",
+            no_sun_position=50,
+            respect_manual_close=True,
+            manual_close_threshold=5,
+            minimum_tilt_change=0,
+            enabled=True,
+            reflection_protection_enabled=False,
+            reflection_protection_min_tilt=50,
+            reflection_protection_start_time="09:00",
+            reflection_protection_end_time="17:00",
+        )
+        # Sun calculation that would normally yield 0% tilt
+        calculation_zero_tilt = SlatCalculationResult(
+            slat_angle_deg=0.0,
+            slat_tilt_percent=0.0,
+            profile_angle_deg=90.0,
+            horizontal_shadow_angle_deg=0.0,
+            sun_is_behind_facade=False,
+        )
+
+        result = await controller.apply_calculation(config, calculation_zero_tilt)
+
+        assert result is True
+        call_args = mock_hass.services.async_call.call_args
+        assert call_args[0][1] == "set_cover_tilt_position"
+        service_data = call_args[0][2]
+        assert service_data["tilt_position"] == 5  # Clamped to threshold
+
+    @pytest.mark.asyncio
+    async def test_no_clamp_when_respect_manual_close_disabled(
+        self,
+        mock_hass: MagicMock,
+    ) -> None:
+        """When respect_manual_close=False, 0% tilt applies as-is without clamping."""
+        mock_hass.states.get.return_value = create_mock_state(
+            state="open",
+            attributes={"current_position": 100, "current_tilt_position": 50},
+        )
+        mock_hass.services.async_call = AsyncMock()
+        controller = CoverController(mock_hass)
+
+        config = CoverConfig(
+            entity_id="cover.test",
+            drive_position=100,
+            min_angle=0,
+            max_angle=90,
+            invert_tilt=False,
+            no_sun_behavior="keep_last",
+            no_sun_position=50,
+            respect_manual_close=False,
+            manual_close_threshold=5,
+            minimum_tilt_change=0,
+            enabled=True,
+            reflection_protection_enabled=False,
+            reflection_protection_min_tilt=50,
+            reflection_protection_start_time="09:00",
+            reflection_protection_end_time="17:00",
+        )
+        calculation_zero_tilt = SlatCalculationResult(
+            slat_angle_deg=0.0,
+            slat_tilt_percent=0.0,
+            profile_angle_deg=90.0,
+            horizontal_shadow_angle_deg=0.0,
+            sun_is_behind_facade=False,
+        )
+
+        result = await controller.apply_calculation(config, calculation_zero_tilt)
+
+        assert result is True
+        call_args = mock_hass.services.async_call.call_args
+        service_data = call_args[0][2]
+        assert service_data["tilt_position"] == 0  # No clamp applied
 
     @pytest.mark.asyncio
     async def test_ignores_manual_close_when_disabled(

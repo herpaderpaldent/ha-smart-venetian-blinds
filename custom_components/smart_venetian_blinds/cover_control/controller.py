@@ -117,7 +117,12 @@ class CoverController:
     POSITION_TIMEOUT_SEC = 60
     POSITION_TOLERANCE_PERCENT = 2
 
-    def __init__(self, hass: HomeAssistant, *, sun_has_hit_facade: bool = False) -> None:
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        *,
+        sun_has_hit_facade: bool = False,
+    ) -> None:
         """Initialize the cover controller."""
         self._hass = hass
         self._sun_has_hit_facade = sun_has_hit_facade
@@ -160,7 +165,9 @@ class CoverController:
             )
             return False
 
-        # Check manual close threshold (based on TILT, not position)
+        # Check manual close threshold (based on TILT, not position).
+        # The invariant: the integration never sets tilt below this threshold (see _effective_min_tilt),
+        # so any tilt below it was put there by the user.
         if config.respect_manual_close:
             current_tilt = self._get_cover_tilt(config.entity_id)
             if current_tilt is not None and current_tilt < config.manual_close_threshold:
@@ -188,6 +195,8 @@ class CoverController:
             calculation.slat_tilt_percent,
             config.invert_tilt,
         )
+        # Never set below our own threshold — preserves the manual-close invariant
+        tilt_percent = max(tilt_percent, self._effective_min_tilt(config))
 
         # Check if tilt change is significant enough
         current_tilt = self._get_cover_tilt(config.entity_id)
@@ -212,6 +221,10 @@ class CoverController:
 
         await self._set_cover_tilt(config.entity_id, tilt_percent)
         return True
+
+    def _effective_min_tilt(self, config: CoverConfig) -> float:
+        """Minimum tilt the integration may set (preserves manual-close invariant)."""
+        return float(config.manual_close_threshold) if config.respect_manual_close else 0.0
 
     def _is_reflection_protection_active(self, config: CoverConfig) -> bool:
         """
@@ -244,12 +257,13 @@ class CoverController:
         """
         # Check reflection protection first
         if self._is_reflection_protection_active(config):
+            tilt = max(float(config.reflection_protection_min_tilt), self._effective_min_tilt(config))
             LOGGER.debug(
                 "No sun + reflection protection active for %s, setting min tilt %d%%",
                 config.entity_id,
                 config.reflection_protection_min_tilt,
             )
-            await self._set_cover_tilt(config.entity_id, float(config.reflection_protection_min_tilt))
+            await self._set_cover_tilt(config.entity_id, tilt)
             return True
 
         behavior = config.no_sun_behavior
@@ -267,17 +281,19 @@ class CoverController:
             return True
 
         if behavior == "close":
+            tilt = max(0.0, self._effective_min_tilt(config))
             LOGGER.debug("No sun, closing %s", config.entity_id)
-            await self._set_cover_tilt(config.entity_id, 0.0)
+            await self._set_cover_tilt(config.entity_id, tilt)
             return True
 
         if behavior == "set_to_percent":
+            tilt = max(float(config.no_sun_position), self._effective_min_tilt(config))
             LOGGER.debug(
                 "No sun, setting %s to %d%%",
                 config.entity_id,
                 config.no_sun_position,
             )
-            await self._set_cover_tilt(config.entity_id, float(config.no_sun_position))
+            await self._set_cover_tilt(config.entity_id, tilt)
             return True
 
         LOGGER.warning("Unknown no_sun_behavior: %s", behavior)
