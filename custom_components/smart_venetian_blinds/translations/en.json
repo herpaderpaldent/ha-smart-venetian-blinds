@@ -153,6 +153,14 @@
     }
   },
   "entity": {
+    "number": {
+      "slat_width": {
+        "name": "Slat Width"
+      },
+      "slat_spacing": {
+        "name": "Slat Spacing"
+      }
+    },
     "sensor": {
       "slat_angle": {
         "name": "Slat Angle"

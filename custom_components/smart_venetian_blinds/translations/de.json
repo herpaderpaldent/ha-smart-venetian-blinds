@@ -153,6 +153,14 @@
     }
   },
   "entity": {
+    "number": {
+      "slat_width": {
+        "name": "Lamellenbreite"
+      },
+      "slat_spacing": {
+        "name": "Lamellenabstand"
+      }
+    },
     "sensor": {
       "slat_angle": {
         "name": "Lamellenwinkel"
