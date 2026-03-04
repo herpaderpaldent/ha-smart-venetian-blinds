@@ -10,6 +10,7 @@ from typing import Any
 
 from custom_components.smart_venetian_blinds.const import ATTRIBUTION, DOMAIN
 from custom_components.smart_venetian_blinds.coordinator import SmartVenetianBlindsDataUpdateCoordinator
+from custom_components.smart_venetian_blinds.utils.string_helpers import slugify_name
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
 from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -40,6 +41,7 @@ class AutoControlSwitch(CoordinatorEntity[SmartVenetianBlindsDataUpdateCoordinat
         """Initialize the switch."""
         super().__init__(coordinator)
         self._attr_unique_id = f"{coordinator.config_entry.entry_id}_auto_control"
+        self.entity_id = f"switch.{slugify_name(coordinator.config_entry.title)}_auto_control"
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, coordinator.config_entry.entry_id)},
             name=coordinator.config_entry.title,

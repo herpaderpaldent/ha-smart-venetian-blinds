@@ -26,6 +26,7 @@ def _make_switch(state: GroupState, apply_fn: AsyncMock | None = None) -> AutoCo
     coordinator = MagicMock()
     coordinator.config_entry.runtime_data = runtime_data
     coordinator.config_entry.entry_id = "test_entry_123"
+    coordinator.config_entry.title = "test_group"
     coordinator.trigger_update = MagicMock()
 
     switch = AutoControlSwitch(coordinator)
