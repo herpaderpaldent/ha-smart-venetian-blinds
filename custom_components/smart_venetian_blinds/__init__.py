@@ -33,6 +33,7 @@ if TYPE_CHECKING:
     from .data import SmartVenetianBlindsConfigEntry
 
 PLATFORMS: list[Platform] = [
+    Platform.NUMBER,
     Platform.SENSOR,
     Platform.SWITCH,
 ]
