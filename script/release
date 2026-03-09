@@ -1,0 +1,75 @@
+#!/bin/bash
+
+# script/release: Bump version in manifest.json and create a release commit + tag
+#
+# Accepts a single semver argument (MAJOR.MINOR.PATCH), updates manifest.json,
+# creates a signed commit, and creates an annotated git tag.
+# Does NOT push — run `git push && git push --tags` when ready.
+#
+# Usage:
+#   ./script/release <version>
+#
+# Examples:
+#   ./script/release 0.5.0
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR/.."
+
+# shellcheck source=script/.lib/output.sh
+source "$SCRIPT_DIR/.lib/output.sh"
+
+MANIFEST="custom_components/smart_venetian_blinds/manifest.json"
+
+# --- Validate argument --------------------------------------------------
+
+if [[ $# -ne 1 ]]; then
+    log_error "Usage: script/release <version>  (e.g. 0.5.0)"
+    exit 1
+fi
+
+VERSION="$1"
+
+if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    log_error "Version '$VERSION' is not a valid semver string (expected MAJOR.MINOR.PATCH)"
+    exit 1
+fi
+
+# --- Check working tree is clean ----------------------------------------
+
+if [[ -n "$(git status --porcelain)" ]]; then
+    log_error "Working tree is not clean. Commit or stash changes before releasing."
+    exit 1
+fi
+
+# --- Bump version in manifest.json --------------------------------------
+
+log_header "Updating $MANIFEST to version $VERSION"
+
+CURRENT=$(python3 -c "import json,sys; print(json.load(open('$MANIFEST'))['version'])")
+log_info "Current version: $CURRENT  →  New version: $VERSION"
+
+# Use Python to update the version field to preserve JSON formatting
+python3 - <<EOF
+import json, pathlib
+
+path = pathlib.Path("$MANIFEST")
+data = json.loads(path.read_text())
+data["version"] = "$VERSION"
+path.write_text(json.dumps(data, indent=2) + "\n")
+EOF
+
+# --- Commit and tag -----------------------------------------------------
+
+log_header "Creating release commit and tag"
+
+git add "$MANIFEST"
+git commit -m "chore: bump version to $VERSION"
+git tag -a "$VERSION" -m "Release $VERSION"
+
+log_success "Version bumped to $VERSION, commit and tag created."
+echo ""
+echo "  Next steps:"
+echo "    git push && git push --tags"
+echo ""
