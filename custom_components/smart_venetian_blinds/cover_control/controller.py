@@ -202,10 +202,6 @@ class CoverController:
         # Never set below our own threshold — preserves the manual-close invariant
         tilt_percent = max(tilt_percent, self._effective_min_tilt(config))
 
-        # Apply minimum tilt floor
-        if config.min_tilt_percent > 0:
-            tilt_percent = max(float(config.min_tilt_percent), tilt_percent)
-
         # Check if tilt change is significant enough
         current_tilt = self._get_cover_tilt(config.entity_id)
         if current_tilt is not None:
@@ -232,7 +228,8 @@ class CoverController:
 
     def _effective_min_tilt(self, config: CoverConfig) -> float:
         """Minimum tilt the integration may set (preserves manual-close invariant)."""
-        return float(config.manual_close_threshold) if config.respect_manual_close else 0.0
+        base = float(config.manual_close_threshold) if config.respect_manual_close else 0.0
+        return max(base, float(config.min_tilt_percent))
 
     def _is_reflection_protection_active(self, config: CoverConfig) -> bool:
         """
