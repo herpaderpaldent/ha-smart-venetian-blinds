@@ -61,7 +61,8 @@
             "min_angle_deg": "Minimaler Winkel",
             "max_angle_deg": "Maximaler Winkel",
             "invert_tilt_percent": "Neigung invertieren",
-            "minimum_tilt_change_percent": "Minimale Neigungsänderung"
+            "minimum_tilt_change_percent": "Minimale Neigungsänderung",
+            "min_tilt_percent": "Minimale Neigung"
           },
           "data_description": {
             "cover_entity_id": "Die zu steuernde Abdeckungs-Entität",
@@ -70,7 +71,8 @@
             "min_angle_deg": "Minimale mechanische Neigungswinkelbeschränkung",
             "max_angle_deg": "Maximale mechanische Neigungswinkelbeschränkung",
             "invert_tilt_percent": "Neigungsprozent invertieren, falls die Abdeckung umgekehrte Semantik verwendet",
-            "minimum_tilt_change_percent": "Neigung nur anpassen, wenn die Änderung diesen Schwellenwert überschreitet (reduziert Motorverschleiß)"
+            "minimum_tilt_change_percent": "Neigung nur anpassen, wenn die Änderung diesen Schwellenwert überschreitet (reduziert Motorverschleiß)",
+            "min_tilt_percent": "Mindestwert für Neigungsprozent — der berechnete Wert unterschreitet diesen Wert nie (0 = kein Minimum, vollständiges Schließen erlaubt)"
           }
         },
         "protection": {
@@ -99,7 +101,8 @@
             "min_angle_deg": "Minimaler Winkel",
             "max_angle_deg": "Maximaler Winkel",
             "invert_tilt_percent": "Neigung invertieren",
-            "minimum_tilt_change_percent": "Minimale Neigungsänderung"
+            "minimum_tilt_change_percent": "Minimale Neigungsänderung",
+            "min_tilt_percent": "Minimale Neigung"
           },
           "data_description": {
             "enabled": "Automatische Steuerung für diese Abdeckung aktivieren",
@@ -108,7 +111,8 @@
             "min_angle_deg": "Minimale mechanische Neigungswinkelbeschränkung",
             "max_angle_deg": "Maximale mechanische Neigungswinkelbeschränkung",
             "invert_tilt_percent": "Neigungsprozent invertieren, falls die Abdeckung umgekehrte Semantik verwendet",
-            "minimum_tilt_change_percent": "Neigung nur anpassen, wenn die Änderung diesen Schwellenwert überschreitet (reduziert Motorverschleiß)"
+            "minimum_tilt_change_percent": "Neigung nur anpassen, wenn die Änderung diesen Schwellenwert überschreitet (reduziert Motorverschleiß)",
+            "min_tilt_percent": "Mindestwert für Neigungsprozent — der berechnete Wert unterschreitet diesen Wert nie (0 = kein Minimum, vollständiges Schließen erlaubt)"
           }
         },
         "reconfigure_protection": {

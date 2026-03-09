@@ -14,6 +14,7 @@ from custom_components.smart_venetian_blinds.const import (
     CONF_MANUAL_CLOSE_THRESHOLD,
     CONF_MAX_ANGLE,
     CONF_MIN_ANGLE,
+    CONF_MIN_TILT_PERCENT,
     CONF_MINIMUM_TILT_CHANGE,
     CONF_NO_SUN_BEHAVIOR,
     CONF_NO_SUN_POSITION,
@@ -24,6 +25,7 @@ from custom_components.smart_venetian_blinds.const import (
     DEFAULT_MANUAL_CLOSE_THRESHOLD,
     DEFAULT_MAX_ANGLE,
     DEFAULT_MIN_ANGLE,
+    DEFAULT_MIN_TILT_PERCENT,
     DEFAULT_MINIMUM_TILT_CHANGE,
     DEFAULT_NO_SUN_BEHAVIOR,
     DEFAULT_NO_SUN_POSITION,
@@ -53,6 +55,7 @@ class TestCoverConfigFromSubentry:
             CONF_MANUAL_CLOSE_THRESHOLD: 20,
             CONF_MINIMUM_TILT_CHANGE: 10,
             CONF_COVER_ENABLED: False,
+            CONF_MIN_TILT_PERCENT: 48,
         }
 
         config = CoverConfig.from_subentry(subentry)
@@ -68,6 +71,7 @@ class TestCoverConfigFromSubentry:
         assert config.manual_close_threshold == 20
         assert config.minimum_tilt_change == 10
         assert config.enabled is False
+        assert config.min_tilt_percent == 48
 
     def test_uses_defaults_for_missing(self) -> None:
         """Uses defaults when optional fields are missing."""
@@ -89,6 +93,7 @@ class TestCoverConfigFromSubentry:
         assert config.manual_close_threshold == DEFAULT_MANUAL_CLOSE_THRESHOLD
         assert config.minimum_tilt_change == DEFAULT_MINIMUM_TILT_CHANGE
         assert config.enabled == DEFAULT_COVER_ENABLED
+        assert config.min_tilt_percent == DEFAULT_MIN_TILT_PERCENT
 
 
 @pytest.mark.unit
@@ -792,3 +797,174 @@ class TestReflectionProtection:
         assert result is True
         # Position already at 100%, no service call needed
         controller._hass.services.async_call.assert_not_called()
+
+
+@pytest.mark.unit
+class TestMinTiltPercent:
+    """Tests for min_tilt_percent floor clamp in apply_calculation."""
+
+    @pytest.mark.asyncio
+    async def test_floor_clamps_low_calculated_tilt(
+        self,
+        mock_hass: MagicMock,
+        calculation_result_direct_sun: SlatCalculationResult,
+    ) -> None:
+        """When calculated tilt is below min_tilt_percent, applies the floor."""
+        mock_hass.states.get.return_value = create_mock_state(
+            state="open",
+            attributes={"current_position": 100, "current_tilt_position": 0},
+        )
+        mock_hass.services.async_call = AsyncMock()
+        controller = CoverController(mock_hass)
+
+        # calculation_result_direct_sun has slat_tilt_percent=50.0
+        # Set floor at 70% so calculated value (50%) gets clamped
+        config = CoverConfig(
+            entity_id="cover.test",
+            drive_position=100,
+            min_angle=0,
+            max_angle=90,
+            invert_tilt=False,
+            no_sun_behavior="keep_last",
+            no_sun_position=50,
+            respect_manual_close=False,
+            manual_close_threshold=5,
+            minimum_tilt_change=0,
+            enabled=True,
+            reflection_protection_enabled=False,
+            reflection_protection_min_tilt=50,
+            reflection_protection_start_time="09:00",
+            reflection_protection_end_time="17:00",
+            min_tilt_percent=70,
+        )
+
+        result = await controller.apply_calculation(config, calculation_result_direct_sun)
+
+        assert result is True
+        call_args = mock_hass.services.async_call.call_args
+        service_data = call_args[0][2]
+        assert service_data["tilt_position"] == 70  # Clamped to floor
+
+    @pytest.mark.asyncio
+    async def test_floor_does_not_reduce_higher_tilt(
+        self,
+        mock_hass: MagicMock,
+        calculation_result_direct_sun: SlatCalculationResult,
+    ) -> None:
+        """When calculated tilt exceeds min_tilt_percent, uses calculated value."""
+        mock_hass.states.get.return_value = create_mock_state(
+            state="open",
+            attributes={"current_position": 100, "current_tilt_position": 0},
+        )
+        mock_hass.services.async_call = AsyncMock()
+        controller = CoverController(mock_hass)
+
+        # calculation_result_direct_sun has slat_tilt_percent=50.0
+        # Set floor at 30% — calculated value (50%) is already above it
+        config = CoverConfig(
+            entity_id="cover.test",
+            drive_position=100,
+            min_angle=0,
+            max_angle=90,
+            invert_tilt=False,
+            no_sun_behavior="keep_last",
+            no_sun_position=50,
+            respect_manual_close=False,
+            manual_close_threshold=5,
+            minimum_tilt_change=0,
+            enabled=True,
+            reflection_protection_enabled=False,
+            reflection_protection_min_tilt=50,
+            reflection_protection_start_time="09:00",
+            reflection_protection_end_time="17:00",
+            min_tilt_percent=30,
+        )
+
+        result = await controller.apply_calculation(config, calculation_result_direct_sun)
+
+        assert result is True
+        call_args = mock_hass.services.async_call.call_args
+        service_data = call_args[0][2]
+        assert service_data["tilt_position"] == 50  # Calculated value unchanged
+
+    @pytest.mark.asyncio
+    async def test_zero_floor_allows_any_tilt(
+        self,
+        mock_hass: MagicMock,
+        calculation_result_direct_sun: SlatCalculationResult,
+    ) -> None:
+        """When min_tilt_percent=0, floor is inactive and low tilt values pass through."""
+        mock_hass.states.get.return_value = create_mock_state(
+            state="open",
+            attributes={"current_position": 100, "current_tilt_position": 0},
+        )
+        mock_hass.services.async_call = AsyncMock()
+        controller = CoverController(mock_hass)
+
+        config = CoverConfig(
+            entity_id="cover.test",
+            drive_position=100,
+            min_angle=0,
+            max_angle=90,
+            invert_tilt=False,
+            no_sun_behavior="keep_last",
+            no_sun_position=50,
+            respect_manual_close=False,
+            manual_close_threshold=5,
+            minimum_tilt_change=0,
+            enabled=True,
+            reflection_protection_enabled=False,
+            reflection_protection_min_tilt=50,
+            reflection_protection_start_time="09:00",
+            reflection_protection_end_time="17:00",
+            min_tilt_percent=0,
+        )
+
+        result = await controller.apply_calculation(config, calculation_result_direct_sun)
+
+        assert result is True
+        call_args = mock_hass.services.async_call.call_args
+        service_data = call_args[0][2]
+        assert service_data["tilt_position"] == 50  # calculation_result_direct_sun value
+
+    @pytest.mark.asyncio
+    async def test_floor_applied_after_inversion(
+        self,
+        mock_hass: MagicMock,
+        calculation_result_direct_sun: SlatCalculationResult,
+    ) -> None:
+        """Floor is applied to the post-inversion value."""
+        mock_hass.states.get.return_value = create_mock_state(
+            state="open",
+            attributes={"current_position": 100, "current_tilt_position": 0},
+        )
+        mock_hass.services.async_call = AsyncMock()
+        controller = CoverController(mock_hass)
+
+        # calculation_result_direct_sun has slat_tilt_percent=50.0
+        # After inversion: 100 - 50 = 50. Floor at 60 → clamped to 60.
+        config = CoverConfig(
+            entity_id="cover.test",
+            drive_position=100,
+            min_angle=0,
+            max_angle=90,
+            invert_tilt=True,
+            no_sun_behavior="keep_last",
+            no_sun_position=50,
+            respect_manual_close=False,
+            manual_close_threshold=5,
+            minimum_tilt_change=0,
+            enabled=True,
+            reflection_protection_enabled=False,
+            reflection_protection_min_tilt=50,
+            reflection_protection_start_time="09:00",
+            reflection_protection_end_time="17:00",
+            min_tilt_percent=60,
+        )
+
+        result = await controller.apply_calculation(config, calculation_result_direct_sun)
+
+        assert result is True
+        call_args = mock_hass.services.async_call.call_args
+        service_data = call_args[0][2]
+        assert service_data["tilt_position"] == 60  # Floor applied after inversion

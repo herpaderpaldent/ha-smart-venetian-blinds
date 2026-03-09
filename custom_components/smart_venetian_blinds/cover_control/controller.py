@@ -18,6 +18,7 @@ from custom_components.smart_venetian_blinds.const import (
     CONF_MANUAL_CLOSE_THRESHOLD,
     CONF_MAX_ANGLE,
     CONF_MIN_ANGLE,
+    CONF_MIN_TILT_PERCENT,
     CONF_MINIMUM_TILT_CHANGE,
     CONF_NO_SUN_BEHAVIOR,
     CONF_NO_SUN_POSITION,
@@ -32,6 +33,7 @@ from custom_components.smart_venetian_blinds.const import (
     DEFAULT_MANUAL_CLOSE_THRESHOLD,
     DEFAULT_MAX_ANGLE,
     DEFAULT_MIN_ANGLE,
+    DEFAULT_MIN_TILT_PERCENT,
     DEFAULT_MINIMUM_TILT_CHANGE,
     DEFAULT_NO_SUN_BEHAVIOR,
     DEFAULT_NO_SUN_POSITION,
@@ -71,6 +73,7 @@ class CoverConfig:
     reflection_protection_min_tilt: int
     reflection_protection_start_time: str
     reflection_protection_end_time: str
+    min_tilt_percent: int = 0
 
     @classmethod
     def from_subentry(cls, subentry: ConfigSubentry) -> CoverConfig:
@@ -100,6 +103,7 @@ class CoverConfig:
             reflection_protection_end_time=data.get(
                 CONF_REFLECTION_PROTECTION_END_TIME, DEFAULT_REFLECTION_PROTECTION_END_TIME
             ),
+            min_tilt_percent=data.get(CONF_MIN_TILT_PERCENT, DEFAULT_MIN_TILT_PERCENT),
         )
 
 
@@ -197,6 +201,10 @@ class CoverController:
         )
         # Never set below our own threshold — preserves the manual-close invariant
         tilt_percent = max(tilt_percent, self._effective_min_tilt(config))
+
+        # Apply minimum tilt floor
+        if config.min_tilt_percent > 0:
+            tilt_percent = max(float(config.min_tilt_percent), tilt_percent)
 
         # Check if tilt change is significant enough
         current_tilt = self._get_cover_tilt(config.entity_id)
