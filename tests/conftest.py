@@ -96,6 +96,7 @@ def cover_config_default() -> CoverConfig:
         reflection_protection_min_tilt=50,
         reflection_protection_start_time="09:00",
         reflection_protection_end_time="17:00",
+        min_tilt_percent=0,
     )
 
 

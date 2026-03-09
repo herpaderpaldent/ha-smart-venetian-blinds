@@ -21,6 +21,7 @@ from custom_components.smart_venetian_blinds.const import (
     CONF_MANUAL_CLOSE_THRESHOLD,
     CONF_MAX_ANGLE,
     CONF_MIN_ANGLE,
+    CONF_MIN_TILT_PERCENT,
     CONF_MINIMUM_TILT_CHANGE,
     CONF_REFLECTION_PROTECTION_ENABLED,
     CONF_REFLECTION_PROTECTION_MIN_TILT,
@@ -31,6 +32,7 @@ from custom_components.smart_venetian_blinds.const import (
     DEFAULT_MANUAL_CLOSE_THRESHOLD,
     DEFAULT_MAX_ANGLE,
     DEFAULT_MIN_ANGLE,
+    DEFAULT_MIN_TILT_PERCENT,
     DEFAULT_MINIMUM_TILT_CHANGE,
     DEFAULT_REFLECTION_PROTECTION_ENABLED,
     DEFAULT_REFLECTION_PROTECTION_MIN_TILT,
@@ -132,6 +134,18 @@ def get_cover_tilt_schema(
                 selector.NumberSelectorConfig(
                     min=0,
                     max=20,
+                    step=1,
+                    unit_of_measurement="%",
+                    mode=selector.NumberSelectorMode.SLIDER,
+                ),
+            ),
+            vol.Required(
+                CONF_MIN_TILT_PERCENT,
+                default=defaults.get(CONF_MIN_TILT_PERCENT, DEFAULT_MIN_TILT_PERCENT),
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0,
+                    max=100,
                     step=1,
                     unit_of_measurement="%",
                     mode=selector.NumberSelectorMode.SLIDER,
@@ -329,6 +343,18 @@ def get_cover_subentry_schema(
                 selector.NumberSelectorConfig(
                     min=0,
                     max=20,
+                    step=1,
+                    unit_of_measurement="%",
+                    mode=selector.NumberSelectorMode.SLIDER,
+                ),
+            ),
+            vol.Required(
+                CONF_MIN_TILT_PERCENT,
+                default=defaults.get(CONF_MIN_TILT_PERCENT, DEFAULT_MIN_TILT_PERCENT),
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0,
+                    max=100,
                     step=1,
                     unit_of_measurement="%",
                     mode=selector.NumberSelectorMode.SLIDER,

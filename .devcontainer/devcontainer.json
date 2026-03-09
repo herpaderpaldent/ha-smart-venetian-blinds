@@ -1,6 +1,8 @@
 {
   "name": "HA smart_venetian_blinds Dev Container",
-  "image": "mcr.microsoft.com/devcontainers/python:3.13",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
   "postCreateCommand": "bash .devcontainer/setup-shell.sh && bash .devcontainer/setup-git.sh && script/setup/setup",
   "containerEnv": {
     // Home Assistant version to install in the devcontainer.

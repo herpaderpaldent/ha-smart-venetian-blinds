@@ -61,7 +61,21 @@ The default 5% threshold prevents motor wear but can cause the blinds to lag beh
 
 To change: Reconfigure the cover -> "Minimum tilt change" setting.
 
-### 4. Check Your Geometry Ratio
+### 4. Set a Minimum Tilt Floor
+
+If you want the blinds to never fully close under automatic control — for example to maintain airflow, privacy, or a minimum amount of daylight — configure the **Minimum tilt** setting per cover.
+
+| Setting | Effect |
+| ------- | ------ |
+| `0%` (default) | No floor — covers can close fully |
+| `20%` | Slats never tilt below 20%, even when sun calculation would close them |
+| `50%` | Slats always stay at least half-open |
+
+**Interaction with manual close detection:** The manual-close threshold and minimum tilt floor work together. If you set `min_tilt = 30%` and `manual_close_threshold = 5%`, the integration will never auto-set tilt below 30% — so any tilt you manually set below 30% is treated as a deliberate override and auto-control is skipped until the next sun update cycle.
+
+To change: Reconfigure the cover -> step 1 "Cover & Tilt Settings" -> **Minimum tilt** slider.
+
+### 5. Check Your Geometry Ratio
 
 The integration calculates a ratio: `(spacing * cos(profile_angle)) / width`
 
@@ -145,6 +159,7 @@ Geometry Ratio (d/L): {{ (slat_spacing / slat_width)|round(3) }}
 - [ ] Measured slat spacing bottom-to-bottom (mm)
 - [ ] Verified facade azimuth with compass
 - [ ] Checked minimum tilt change threshold (try 2%)
+- [ ] Considered minimum tilt floor if covers should never fully close
 - [ ] Ran diagnostic template during sunlight leakage
 - [ ] Compared calculated tilt vs. manually-working tilt
 

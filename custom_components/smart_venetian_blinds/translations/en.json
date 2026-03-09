@@ -61,7 +61,8 @@
             "min_angle_deg": "Minimum angle",
             "max_angle_deg": "Maximum angle",
             "invert_tilt_percent": "Invert tilt",
-            "minimum_tilt_change_percent": "Minimum tilt change"
+            "minimum_tilt_change_percent": "Minimum tilt change",
+            "min_tilt_percent": "Minimum tilt"
           },
           "data_description": {
             "cover_entity_id": "The cover entity to control",
@@ -70,7 +71,8 @@
             "min_angle_deg": "Minimum mechanical tilt angle constraint",
             "max_angle_deg": "Maximum mechanical tilt angle constraint",
             "invert_tilt_percent": "Invert tilt percent if cover uses reversed semantics",
-            "minimum_tilt_change_percent": "Only adjust tilt if change exceeds this threshold (reduces motor wear)"
+            "minimum_tilt_change_percent": "Only adjust tilt if change exceeds this threshold (reduces motor wear)",
+            "min_tilt_percent": "Floor tilt percentage — calculated tilt will never go below this value (0 = no floor, allow fully closed)"
           }
         },
         "protection": {
@@ -99,7 +101,8 @@
             "min_angle_deg": "Minimum angle",
             "max_angle_deg": "Maximum angle",
             "invert_tilt_percent": "Invert tilt",
-            "minimum_tilt_change_percent": "Minimum tilt change"
+            "minimum_tilt_change_percent": "Minimum tilt change",
+            "min_tilt_percent": "Minimum tilt"
           },
           "data_description": {
             "enabled": "Enable automatic control for this cover",
@@ -108,7 +111,8 @@
             "min_angle_deg": "Minimum mechanical tilt angle constraint",
             "max_angle_deg": "Maximum mechanical tilt angle constraint",
             "invert_tilt_percent": "Invert tilt percent if cover uses reversed semantics",
-            "minimum_tilt_change_percent": "Only adjust tilt if change exceeds this threshold (reduces motor wear)"
+            "minimum_tilt_change_percent": "Only adjust tilt if change exceeds this threshold (reduces motor wear)",
+            "min_tilt_percent": "Floor tilt percentage — calculated tilt will never go below this value (0 = no floor, allow fully closed)"
           }
         },
         "reconfigure_protection": {
