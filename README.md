@@ -17,6 +17,7 @@ A Home Assistant custom integration for automatic sun-position-driven venetian b
 - **Multiple covers per window group** sharing the same facade orientation
 - **Manual override detection** - won't disturb manually closed blinds
 - **Reflection protection** - prevents glare from reflected light (balconies/terraces)
+- **Minimum tilt floor** - set a lower bound so covers never go below a configured openness
 - **Throttling controls** to reduce motor wear
 
 ## Quick Start
