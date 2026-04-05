@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:developers.home-assistant.io)",
+      "WebFetch(domain:github.com)",
+      "Bash(script/test:*)",
+      "Bash(script/check:*)",
+      "Bash(script/lint:*)",
+      "Bash(ruff check:*)",
+      "Bash(python:*)",
+      "Bash(./script/test:*)",
+      "Bash(pre-commit clean:*)",
+      "Bash(pre-commit install:*)",
+      "WebSearch",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: implement multi-step cover configuration wizard\n\nSplit the cover subentry form into a 2-step wizard with logical groupings:\n- Step 1: Cover entity, tilt settings, no-sun behavior\n- Step 1.5: No-sun position \\(conditional, only if \"set_to_percent\" selected\\)\n- Step 2: Protection options \\(reflection protection, manual close\\)\n\nThis improves UX by showing the no-sun position slider only when relevant\nand grouping related settings together.\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(./script/check:*)",
+      "Bash(./script/lint:*)",
+      "Bash(./script/hassfest:*)",
+      "Bash(grep:*)",
+      "Bash(git commit:*)",
+      "Bash(tree:*)",
+      "Bash(git -C /workspaces/ha-smart-venetian-blinds log --oneline -5)",
+      "Bash(find:*)",
+      "Bash(git checkout:*)",
+      "Bash(gh pr:*)",
+      "Bash(git stash:*)"
+    ]
+  }
+}

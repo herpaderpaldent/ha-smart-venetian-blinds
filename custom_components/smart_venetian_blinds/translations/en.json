@@ -77,18 +77,22 @@
         },
         "protection": {
           "title": "Protection Options",
-          "description": "Configure reflection protection and manual close detection.",
+          "description": "Configure reflection protection and manual close/open detection.",
           "data": {
             "reflection_protection_enabled": "Enable reflection protection",
             "reflection_protection_min_tilt": "Reflection protection minimum tilt",
             "respect_manual_close": "Respect manual close",
-            "manual_close_threshold_percent": "Manual close threshold"
+            "manual_close_threshold_percent": "Manual close threshold",
+            "respect_manual_open": "Respect manual open",
+            "manual_open_threshold_percent": "Manual open threshold"
           },
           "data_description": {
             "reflection_protection_enabled": "Automatically keep minimum tilt after the sun has passed the facade to prevent glare from reflected light (e.g., from balconies). Deactivates when the sun sets. Without reflection protection, the cover fully opens when the sun is no longer hitting the facade.",
             "reflection_protection_min_tilt": "Minimum tilt to maintain when reflection protection is active",
             "respect_manual_close": "Don't disturb blinds that appear manually closed",
-            "manual_close_threshold_percent": "Skip auto-control if tilt is below this percent (slats closed = sleep mode)"
+            "manual_close_threshold_percent": "Skip auto-control if tilt is below this percent (slats closed = sleep mode)",
+            "respect_manual_open": "Don't drive blinds back down when manually raised (e.g. to exit through a patio door)",
+            "manual_open_threshold_percent": "Skip auto-control if position is at or above this percent (cover raised = exit mode)"
           }
         },
         "reconfigure": {
@@ -117,18 +121,22 @@
         },
         "reconfigure_protection": {
           "title": "Protection Options",
-          "description": "Configure reflection protection and manual close detection.",
+          "description": "Configure reflection protection and manual close/open detection.",
           "data": {
             "reflection_protection_enabled": "Enable reflection protection",
             "reflection_protection_min_tilt": "Reflection protection minimum tilt",
             "respect_manual_close": "Respect manual close",
-            "manual_close_threshold_percent": "Manual close threshold"
+            "manual_close_threshold_percent": "Manual close threshold",
+            "respect_manual_open": "Respect manual open",
+            "manual_open_threshold_percent": "Manual open threshold"
           },
           "data_description": {
             "reflection_protection_enabled": "Automatically keep minimum tilt after the sun has passed the facade to prevent glare from reflected light (e.g., from balconies). Deactivates when the sun sets. Without reflection protection, the cover fully opens when the sun is no longer hitting the facade.",
             "reflection_protection_min_tilt": "Minimum tilt to maintain when reflection protection is active",
             "respect_manual_close": "Don't disturb blinds that appear manually closed",
-            "manual_close_threshold_percent": "Skip auto-control if tilt is below this percent (slats closed = sleep mode)"
+            "manual_close_threshold_percent": "Skip auto-control if tilt is below this percent (slats closed = sleep mode)",
+            "respect_manual_open": "Don't drive blinds back down when manually raised (e.g. to exit through a patio door)",
+            "manual_open_threshold_percent": "Skip auto-control if position is at or above this percent (cover raised = exit mode)"
           }
         }
       },
