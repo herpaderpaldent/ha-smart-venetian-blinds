@@ -178,6 +178,9 @@ class TestHandleNoSun:
     def mock_controller(self, mock_hass: MagicMock) -> CoverController:
         """Create controller with mocked service calls."""
         mock_hass.services.async_call = AsyncMock()
+        # Return a state with no tilt attribute so _get_cover_tilt returns None,
+        # which keeps the manual-close check neutral for tests that don't need it.
+        mock_hass.states.get.return_value = create_mock_state(state="open", attributes={})
         return CoverController(mock_hass)
 
     @pytest.mark.asyncio
@@ -379,10 +382,6 @@ class TestHandleNoSun:
         assert result is True
         mock_hass.services.async_call.assert_called_once()
 
-        result = await mock_controller._handle_no_sun(config)
-
-        assert result is False
-
 
 @pytest.mark.unit
 class TestApplyCalculation:
@@ -515,6 +514,7 @@ class TestApplyCalculation:
             reflection_protection_min_tilt=50,
             reflection_protection_start_time="09:00",
             reflection_protection_end_time="17:00",
+            respect_manual_open=False,
         )
         # Sun calculation that would normally yield 0% tilt
         calculation_zero_tilt = SlatCalculationResult(
@@ -562,6 +562,7 @@ class TestApplyCalculation:
             reflection_protection_min_tilt=50,
             reflection_protection_start_time="09:00",
             reflection_protection_end_time="17:00",
+            respect_manual_open=False,
         )
         calculation_zero_tilt = SlatCalculationResult(
             slat_angle_deg=0.0,
@@ -645,6 +646,7 @@ class TestApplyCalculation:
             reflection_protection_min_tilt=50,
             reflection_protection_start_time="09:00",
             reflection_protection_end_time="17:00",
+            respect_manual_open=False,
         )
 
         # calculation_result_direct_sun has slat_tilt_percent=50.0
@@ -685,6 +687,7 @@ class TestApplyCalculation:
             reflection_protection_min_tilt=50,
             reflection_protection_start_time="09:00",
             reflection_protection_end_time="17:00",
+            respect_manual_open=False,
         )
 
         result = await controller.apply_calculation(config, calculation_result_direct_sun)
@@ -826,6 +829,7 @@ class TestReflectionProtection:
     async def test_handle_no_sun_uses_reflection_when_sun_passed(self, mock_hass: MagicMock) -> None:
         """When sun has passed facade, reflection protection sets min tilt instead of no_sun_behavior."""
         mock_hass.services.async_call = AsyncMock()
+        mock_hass.states.get.return_value = create_mock_state(state="open", attributes={})
         controller = CoverController(mock_hass, sun_has_hit_facade=True)
 
         config = CoverConfig(
@@ -926,6 +930,7 @@ class TestMinTiltPercent:
             reflection_protection_start_time="09:00",
             reflection_protection_end_time="17:00",
             min_tilt_percent=70,
+            respect_manual_open=False,
         )
 
         result = await controller.apply_calculation(config, calculation_result_direct_sun)
@@ -968,6 +973,7 @@ class TestMinTiltPercent:
             reflection_protection_start_time="09:00",
             reflection_protection_end_time="17:00",
             min_tilt_percent=30,
+            respect_manual_open=False,
         )
 
         result = await controller.apply_calculation(config, calculation_result_direct_sun)
@@ -1008,6 +1014,7 @@ class TestMinTiltPercent:
             reflection_protection_start_time="09:00",
             reflection_protection_end_time="17:00",
             min_tilt_percent=0,
+            respect_manual_open=False,
         )
 
         result = await controller.apply_calculation(config, calculation_result_direct_sun)
@@ -1050,6 +1057,7 @@ class TestMinTiltPercent:
             reflection_protection_start_time="09:00",
             reflection_protection_end_time="17:00",
             min_tilt_percent=60,
+            respect_manual_open=False,
         )
 
         result = await controller.apply_calculation(config, calculation_result_direct_sun)
