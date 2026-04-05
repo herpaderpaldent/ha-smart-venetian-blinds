@@ -303,6 +303,84 @@ class TestHandleNoSun:
 
         assert result is False
 
+    @pytest.mark.asyncio
+    async def test_respects_manual_close_when_no_sun(
+        self,
+        mock_hass: MagicMock,
+    ) -> None:
+        """no_sun behavior is skipped when slats are manually closed (sleep mode)."""
+        mock_hass.services.async_call = AsyncMock()
+        mock_hass.states.get.return_value = create_mock_state(
+            state="closed",
+            attributes={"current_position": 50, "current_tilt_position": 2},  # Below 5% threshold
+        )
+        controller = CoverController(mock_hass)
+
+        config = CoverConfig(
+            entity_id="cover.west_blinds",
+            drive_position=100,
+            min_angle=0,
+            max_angle=90,
+            invert_tilt=False,
+            no_sun_behavior="open",  # Would normally raise the cover
+            no_sun_position=50,
+            respect_manual_close=True,
+            manual_close_threshold=5,
+            minimum_tilt_change=5,
+            enabled=True,
+            reflection_protection_enabled=False,
+            reflection_protection_min_tilt=50,
+            reflection_protection_start_time="09:00",
+            reflection_protection_end_time="17:00",
+        )
+
+        result = await controller._handle_no_sun(config)
+
+        # Sleep mode should prevent the "open" action
+        assert result is False
+        mock_hass.services.async_call.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_no_sun_proceeds_when_manual_close_not_detected(
+        self,
+        mock_hass: MagicMock,
+    ) -> None:
+        """no_sun behavior runs normally when tilt is above manual close threshold."""
+        mock_hass.services.async_call = AsyncMock()
+        mock_hass.states.get.return_value = create_mock_state(
+            state="open",
+            attributes={"current_position": 80, "current_tilt_position": 50},
+        )
+        controller = CoverController(mock_hass)
+        controller._wait_for_position = AsyncMock(return_value=True)
+
+        config = CoverConfig(
+            entity_id="cover.west_blinds",
+            drive_position=100,
+            min_angle=0,
+            max_angle=90,
+            invert_tilt=False,
+            no_sun_behavior="open",
+            no_sun_position=50,
+            respect_manual_close=True,
+            manual_close_threshold=5,  # Tilt is 50%, well above threshold
+            minimum_tilt_change=5,
+            enabled=True,
+            reflection_protection_enabled=False,
+            reflection_protection_min_tilt=50,
+            reflection_protection_start_time="09:00",
+            reflection_protection_end_time="17:00",
+        )
+
+        result = await controller._handle_no_sun(config)
+
+        assert result is True
+        mock_hass.services.async_call.assert_called_once()
+
+        result = await mock_controller._handle_no_sun(config)
+
+        assert result is False
+
 
 @pytest.mark.unit
 class TestApplyCalculation:
