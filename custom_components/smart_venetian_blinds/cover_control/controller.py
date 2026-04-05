@@ -280,6 +280,19 @@ class CoverController:
         Returns:
             True if action was taken, False otherwise.
         """
+        # Respect manual close even in the no-sun path.
+        # If the user closed the slats manually, don't override them when the sun sets.
+        if config.respect_manual_close:
+            current_tilt = self._get_cover_tilt(config.entity_id)
+            if current_tilt is not None and current_tilt < config.manual_close_threshold:
+                LOGGER.debug(
+                    "No sun: cover %s tilt at %.1f%% (below threshold %d%%), respecting manual close",
+                    config.entity_id,
+                    current_tilt,
+                    config.manual_close_threshold,
+                )
+                return False
+
         # Check reflection protection first
         if self._is_reflection_protection_active(config):
             tilt = max(float(config.reflection_protection_min_tilt), self._effective_min_tilt(config))
