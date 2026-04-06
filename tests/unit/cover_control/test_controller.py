@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -222,7 +223,6 @@ class TestHandleNoSun:
             attributes={"current_position": 100},
         )
         # Disable manual-open check so we test only the position-already-at-100 optimisation
-        import dataclasses
         config = dataclasses.replace(cover_config_no_sun_open, respect_manual_open=False)
 
         result = await mock_controller._handle_no_sun(config)
@@ -278,7 +278,6 @@ class TestHandleNoSun:
         cover_config_no_sun_set_percent: CoverConfig,
     ) -> None:
         """set_to_percent behavior sets to configured percent."""
-        import dataclasses
         config = dataclasses.replace(cover_config_no_sun_set_percent, respect_manual_open=False)
         result = await mock_controller._handle_no_sun(config)
 
@@ -465,12 +464,10 @@ class TestHandleNoSun:
         assert result is True
         mock_hass.services.async_call.assert_called_once()
 
-
-
     """Tests for CoverController.apply_calculation method."""
 
     @pytest.fixture
-    def mock_controller(self, mock_hass: MagicMock) -> CoverController:
+    def mock_controller(self, mock_hass: MagicMock) -> CoverController:  # noqa: F811
         """Create controller with mocked service calls and state."""
         mock_hass.services.async_call = AsyncMock()
         mock_hass.states.get.return_value = create_mock_state(

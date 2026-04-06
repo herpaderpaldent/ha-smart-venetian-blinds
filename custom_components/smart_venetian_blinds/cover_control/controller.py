@@ -199,7 +199,11 @@ class CoverController:
         # Exception: on the very first facade hit of the solar day (is_first_facade_hit=True),
         # skip this check so that covers raised overnight by no_sun_behavior="open" are driven
         # back to their working position at sunrise.
-        if config.respect_manual_open and not self._first_facade_hit_this_cycle and current_position >= config.manual_open_threshold:
+        if (
+            config.respect_manual_open
+            and not self._first_facade_hit_this_cycle
+            and current_position >= config.manual_open_threshold
+        ):
             LOGGER.debug(
                 "Cover %s position at %d%% (at or above threshold %d%%), respecting manual open",
                 config.entity_id,
