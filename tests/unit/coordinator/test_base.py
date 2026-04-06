@@ -1,5 +1,7 @@
 """Tests for SmartVenetianBlindsDataUpdateCoordinator._calculate_slat_angle state management."""
 
+# ruff: noqa: SLF001
+
 from __future__ import annotations
 
 from unittest.mock import MagicMock

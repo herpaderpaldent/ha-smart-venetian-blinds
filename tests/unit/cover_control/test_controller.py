@@ -1,5 +1,7 @@
 """Tests for CoverController."""
 
+# ruff: noqa: SLF001
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock
