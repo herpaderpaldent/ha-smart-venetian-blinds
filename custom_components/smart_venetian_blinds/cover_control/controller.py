@@ -134,10 +134,12 @@ class CoverController:
         hass: HomeAssistant,
         *,
         sun_has_hit_facade: bool = False,
+        first_facade_hit_this_cycle: bool = False,
     ) -> None:
         """Initialize the cover controller."""
         self._hass = hass
         self._sun_has_hit_facade = sun_has_hit_facade
+        self._first_facade_hit_this_cycle = first_facade_hit_this_cycle
 
     async def apply_calculation(
         self,
@@ -194,7 +196,10 @@ class CoverController:
         # Check manual open threshold (based on POSITION, not tilt).
         # If the cover was raised above the threshold by the user (e.g. to step out through
         # a patio door), skip auto-control until the cover is lowered again.
-        if config.respect_manual_open and current_position >= config.manual_open_threshold:
+        # Exception: on the very first facade hit of the solar day (is_first_facade_hit=True),
+        # skip this check so that covers raised overnight by no_sun_behavior="open" are driven
+        # back to their working position at sunrise.
+        if config.respect_manual_open and not self._first_facade_hit_this_cycle and current_position >= config.manual_open_threshold:
             LOGGER.debug(
                 "Cover %s position at %d%% (at or above threshold %d%%), respecting manual open",
                 config.entity_id,

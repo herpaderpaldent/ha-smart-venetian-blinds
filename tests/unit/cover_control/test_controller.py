@@ -1232,3 +1232,84 @@ class TestManualOpenDetection:
         # Despite position being 100% (above threshold), should proceed because feature is off
         assert result is True
         mock_hass.services.async_call.assert_called()
+
+    @pytest.mark.asyncio
+    async def test_bypasses_on_first_facade_hit(
+        self,
+        mock_hass: MagicMock,
+        calculation_result_direct_sun: SlatCalculationResult,
+    ) -> None:
+        """At sunrise (first facade hit), cover raised overnight is driven back down."""
+        mock_hass.states.get.return_value = create_mock_state(
+            state="open",
+            attributes={"current_position": 100, "current_tilt_position": 100},
+        )
+        mock_hass.services.async_call = AsyncMock()
+        # first_facade_hit_this_cycle=True simulates the sunrise transition
+        controller = CoverController(mock_hass, first_facade_hit_this_cycle=True)
+
+        config = CoverConfig(
+            entity_id="cover.test",
+            drive_position=70,
+            min_angle=0,
+            max_angle=90,
+            invert_tilt=False,
+            no_sun_behavior="keep_last",
+            no_sun_position=50,
+            respect_manual_close=False,
+            manual_close_threshold=5,
+            minimum_tilt_change=0,
+            enabled=True,
+            reflection_protection_enabled=False,
+            reflection_protection_min_tilt=50,
+            reflection_protection_start_time="09:00",
+            reflection_protection_end_time="17:00",
+            respect_manual_open=True,
+            manual_open_threshold=90,  # position 100% ≥ threshold, but bypass active
+        )
+
+        result = await controller.apply_calculation(config, calculation_result_direct_sun)
+
+        # Bypass active → cover should be driven down despite being above threshold
+        assert result is True
+        mock_hass.services.async_call.assert_called()
+
+    @pytest.mark.asyncio
+    async def test_check_active_after_first_facade_hit(
+        self,
+        mock_hass: MagicMock,
+        calculation_result_direct_sun: SlatCalculationResult,
+    ) -> None:
+        """After the first facade hit, manual-open check resumes for subsequent updates."""
+        mock_hass.states.get.return_value = create_mock_state(
+            state="open",
+            attributes={"current_position": 95, "current_tilt_position": 50},
+        )
+        mock_hass.services.async_call = AsyncMock()
+        # first_facade_hit_this_cycle=False simulates any update after the first
+        controller = CoverController(mock_hass, first_facade_hit_this_cycle=False)
+
+        config = CoverConfig(
+            entity_id="cover.test",
+            drive_position=70,
+            min_angle=0,
+            max_angle=90,
+            invert_tilt=False,
+            no_sun_behavior="keep_last",
+            no_sun_position=50,
+            respect_manual_close=False,
+            manual_close_threshold=5,
+            minimum_tilt_change=0,
+            enabled=True,
+            reflection_protection_enabled=False,
+            reflection_protection_min_tilt=50,
+            reflection_protection_start_time="09:00",
+            reflection_protection_end_time="17:00",
+            respect_manual_open=True,
+            manual_open_threshold=90,  # position 95% ≥ 90% → user must have raised it
+        )
+
+        result = await controller.apply_calculation(config, calculation_result_direct_sun)
+
+        assert result is False
+        mock_hass.services.async_call.assert_not_called()

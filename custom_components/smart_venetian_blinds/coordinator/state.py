@@ -39,6 +39,13 @@ class GroupState:
     # Whether the sun has actively hit the facade during this solar cycle
     sun_has_hit_facade: bool = False
 
+    # True only on the very first calculation where the sun transitions from
+    # not-hitting to hitting the facade.  Cleared after covers are applied so
+    # the manual-open check resumes for all subsequent updates that day.
+    # This lets the integration drive covers back down at sunrise even when
+    # they were raised to 100 % overnight by no_sun_behavior="open".
+    is_first_facade_hit: bool = False
+
     # Whether the no-sun action (open or reflection protection) has already been applied
     # this no-sun period. Resets when the sun starts hitting the facade again.
     no_sun_action_applied: bool = False
@@ -89,10 +96,11 @@ class GroupState:
     def reset_for_fresh_start(self) -> None:
         """Reset state to behave as if freshly initialized.
 
-        Clears sun_has_hit_facade, no_sun_action_applied, and throttle state
-        so the next apply_cover_tilts call fully re-evaluates drive-then-tilt.
+        Clears sun_has_hit_facade, is_first_facade_hit, no_sun_action_applied, and throttle
+        state so the next apply_cover_tilts call fully re-evaluates drive-then-tilt.
         """
         self.sun_has_hit_facade = False
+        self.is_first_facade_hit = False
         self.no_sun_action_applied = False
         self.last_applied_angle = None
         self.last_applied_time = None

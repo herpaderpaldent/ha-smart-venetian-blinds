@@ -113,6 +113,7 @@ async def async_setup_entry(
         controller = CoverController(
             hass,
             sun_has_hit_facade=state.sun_has_hit_facade,
+            first_facade_hit_this_cycle=state.is_first_facade_hit,
         )
         results = await controller.apply_to_all_covers(
             entry.subentries,
@@ -124,6 +125,10 @@ async def async_setup_entry(
         # Mark no-sun action as applied so it doesn't repeat
         if is_no_sun and applied_count > 0:
             state.no_sun_action_applied = True
+
+        # Clear first-facade-hit flag — manual-open check resumes for
+        # all subsequent sun updates during the same solar day.
+        state.is_first_facade_hit = False
 
         LOGGER.debug(
             "Sun state change: applied tilt to %d/%d covers in group '%s'",
