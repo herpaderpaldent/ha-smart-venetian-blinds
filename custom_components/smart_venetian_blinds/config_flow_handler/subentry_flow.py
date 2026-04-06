@@ -222,7 +222,7 @@ class CoverSubentryFlowHandler(ConfigSubentryFlow):
             return entity_entry.name
 
         # Fall back to entity ID
-        return cover_entity_id.split(".")[-1].replace("_", " ").title()
+        return cover_entity_id.rsplit(".", maxsplit=1)[-1].replace("_", " ").title()
 
 
 __all__ = ["CoverSubentryFlowHandler"]
