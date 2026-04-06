@@ -133,7 +133,8 @@
         }
       },
       "error": {
-        "cover_already_added": "This cover is already added to this group."
+        "cover_already_added": "This cover is already added to this group.",
+        "min_tilt_below_sleep_threshold": "Sleep mode threshold must not exceed the minimum tilt. Raise the sleep mode threshold or go back and increase the minimum tilt."
       },
       "abort": {
         "reconfigure_successful": "Cover configuration updated."

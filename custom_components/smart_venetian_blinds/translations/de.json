@@ -133,7 +133,8 @@
         }
       },
       "error": {
-        "cover_already_added": "Diese Abdeckung wurde bereits zu dieser Gruppe hinzugefügt."
+        "cover_already_added": "Diese Abdeckung wurde bereits zu dieser Gruppe hinzugefügt.",
+        "min_tilt_below_sleep_threshold": "Der Schlafmodus-Schwellwert darf die minimale Neigung nicht überschreiten. Senken Sie den Schwellwert oder erhöhen Sie die minimale Neigung in Schritt 1."
       },
       "abort": {
         "reconfigure_successful": "Abdeckungskonfiguration aktualisiert."
