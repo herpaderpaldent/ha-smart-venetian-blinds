@@ -19,6 +19,7 @@ from custom_components.smart_venetian_blinds.const import (
     CONF_DRIVE_POSITION,
     CONF_INVERT_TILT,
     CONF_MANUAL_CLOSE_THRESHOLD,
+    CONF_MANUAL_OPEN_THRESHOLD,
     CONF_MAX_ANGLE,
     CONF_MIN_ANGLE,
     CONF_MIN_TILT_PERCENT,
@@ -26,10 +27,12 @@ from custom_components.smart_venetian_blinds.const import (
     CONF_REFLECTION_PROTECTION_ENABLED,
     CONF_REFLECTION_PROTECTION_MIN_TILT,
     CONF_RESPECT_MANUAL_CLOSE,
+    CONF_RESPECT_MANUAL_OPEN,
     DEFAULT_COVER_ENABLED,
     DEFAULT_DRIVE_POSITION,
     DEFAULT_INVERT_TILT,
     DEFAULT_MANUAL_CLOSE_THRESHOLD,
+    DEFAULT_MANUAL_OPEN_THRESHOLD,
     DEFAULT_MAX_ANGLE,
     DEFAULT_MIN_ANGLE,
     DEFAULT_MIN_TILT_PERCENT,
@@ -37,6 +40,7 @@ from custom_components.smart_venetian_blinds.const import (
     DEFAULT_REFLECTION_PROTECTION_ENABLED,
     DEFAULT_REFLECTION_PROTECTION_MIN_TILT,
     DEFAULT_RESPECT_MANUAL_CLOSE,
+    DEFAULT_RESPECT_MANUAL_OPEN,
 )
 from homeassistant.helpers import selector
 
@@ -213,6 +217,22 @@ def get_protection_schema(
                     mode=selector.NumberSelectorMode.SLIDER,
                 ),
             ),
+            vol.Required(
+                CONF_RESPECT_MANUAL_OPEN,
+                default=defaults.get(CONF_RESPECT_MANUAL_OPEN, DEFAULT_RESPECT_MANUAL_OPEN),
+            ): selector.BooleanSelector(),
+            vol.Optional(
+                CONF_MANUAL_OPEN_THRESHOLD,
+                default=defaults.get(CONF_MANUAL_OPEN_THRESHOLD, DEFAULT_MANUAL_OPEN_THRESHOLD),
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0,
+                    max=100,
+                    step=1,
+                    unit_of_measurement="%",
+                    mode=selector.NumberSelectorMode.SLIDER,
+                ),
+            ),
         }
     )
 
@@ -327,6 +347,22 @@ def get_cover_subentry_schema(
             vol.Optional(
                 CONF_MANUAL_CLOSE_THRESHOLD,
                 default=defaults.get(CONF_MANUAL_CLOSE_THRESHOLD, DEFAULT_MANUAL_CLOSE_THRESHOLD),
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0,
+                    max=100,
+                    step=1,
+                    unit_of_measurement="%",
+                    mode=selector.NumberSelectorMode.SLIDER,
+                ),
+            ),
+            vol.Required(
+                CONF_RESPECT_MANUAL_OPEN,
+                default=defaults.get(CONF_RESPECT_MANUAL_OPEN, DEFAULT_RESPECT_MANUAL_OPEN),
+            ): selector.BooleanSelector(),
+            vol.Optional(
+                CONF_MANUAL_OPEN_THRESHOLD,
+                default=defaults.get(CONF_MANUAL_OPEN_THRESHOLD, DEFAULT_MANUAL_OPEN_THRESHOLD),
             ): selector.NumberSelector(
                 selector.NumberSelectorConfig(
                     min=0,

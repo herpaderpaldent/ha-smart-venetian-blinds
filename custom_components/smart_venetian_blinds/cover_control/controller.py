@@ -16,6 +16,7 @@ from custom_components.smart_venetian_blinds.const import (
     CONF_DRIVE_POSITION,
     CONF_INVERT_TILT,
     CONF_MANUAL_CLOSE_THRESHOLD,
+    CONF_MANUAL_OPEN_THRESHOLD,
     CONF_MAX_ANGLE,
     CONF_MIN_ANGLE,
     CONF_MIN_TILT_PERCENT,
@@ -27,10 +28,12 @@ from custom_components.smart_venetian_blinds.const import (
     CONF_REFLECTION_PROTECTION_MIN_TILT,
     CONF_REFLECTION_PROTECTION_START_TIME,
     CONF_RESPECT_MANUAL_CLOSE,
+    CONF_RESPECT_MANUAL_OPEN,
     DEFAULT_COVER_ENABLED,
     DEFAULT_DRIVE_POSITION,
     DEFAULT_INVERT_TILT,
     DEFAULT_MANUAL_CLOSE_THRESHOLD,
+    DEFAULT_MANUAL_OPEN_THRESHOLD,
     DEFAULT_MAX_ANGLE,
     DEFAULT_MIN_ANGLE,
     DEFAULT_MIN_TILT_PERCENT,
@@ -42,6 +45,7 @@ from custom_components.smart_venetian_blinds.const import (
     DEFAULT_REFLECTION_PROTECTION_MIN_TILT,
     DEFAULT_REFLECTION_PROTECTION_START_TIME,
     DEFAULT_RESPECT_MANUAL_CLOSE,
+    DEFAULT_RESPECT_MANUAL_OPEN,
     LOGGER,
 )
 from custom_components.smart_venetian_blinds.sun.math import apply_tilt_inversion
@@ -74,6 +78,8 @@ class CoverConfig:
     reflection_protection_start_time: str
     reflection_protection_end_time: str
     min_tilt_percent: int = 0
+    respect_manual_open: bool = True
+    manual_open_threshold: int = 90
 
     @classmethod
     def from_subentry(cls, subentry: ConfigSubentry) -> CoverConfig:
@@ -89,6 +95,8 @@ class CoverConfig:
             no_sun_position=data.get(CONF_NO_SUN_POSITION, DEFAULT_NO_SUN_POSITION),
             respect_manual_close=data.get(CONF_RESPECT_MANUAL_CLOSE, DEFAULT_RESPECT_MANUAL_CLOSE),
             manual_close_threshold=data.get(CONF_MANUAL_CLOSE_THRESHOLD, DEFAULT_MANUAL_CLOSE_THRESHOLD),
+            respect_manual_open=data.get(CONF_RESPECT_MANUAL_OPEN, DEFAULT_RESPECT_MANUAL_OPEN),
+            manual_open_threshold=data.get(CONF_MANUAL_OPEN_THRESHOLD, DEFAULT_MANUAL_OPEN_THRESHOLD),
             minimum_tilt_change=data.get(CONF_MINIMUM_TILT_CHANGE, DEFAULT_MINIMUM_TILT_CHANGE),
             enabled=data.get(CONF_COVER_ENABLED, DEFAULT_COVER_ENABLED),
             reflection_protection_enabled=data.get(
@@ -126,10 +134,12 @@ class CoverController:
         hass: HomeAssistant,
         *,
         sun_has_hit_facade: bool = False,
+        first_facade_hit_this_cycle: bool = False,
     ) -> None:
         """Initialize the cover controller."""
         self._hass = hass
         self._sun_has_hit_facade = sun_has_hit_facade
+        self._first_facade_hit_this_cycle = first_facade_hit_this_cycle
 
     async def apply_calculation(
         self,
@@ -182,6 +192,25 @@ class CoverController:
                     config.manual_close_threshold,
                 )
                 return False
+
+        # Check manual open threshold (based on POSITION, not tilt).
+        # If the cover was raised above the threshold by the user (e.g. to step out through
+        # a patio door), skip auto-control until the cover is lowered again.
+        # Exception: on the very first facade hit of the solar day (is_first_facade_hit=True),
+        # skip this check so that covers raised overnight by no_sun_behavior="open" are driven
+        # back to their working position at sunrise.
+        if (
+            config.respect_manual_open
+            and not self._first_facade_hit_this_cycle
+            and current_position >= config.manual_open_threshold
+        ):
+            LOGGER.debug(
+                "Cover %s position at %d%% (at or above threshold %d%%), respecting manual open",
+                config.entity_id,
+                current_position,
+                config.manual_open_threshold,
+            )
+            return False
 
         # Drive to position if needed
         if abs(current_position - config.drive_position) > self.POSITION_TOLERANCE_PERCENT:
@@ -260,6 +289,33 @@ class CoverController:
         Returns:
             True if action was taken, False otherwise.
         """
+        # Respect manual close even in the no-sun path.
+        # If the user closed the slats manually, don't override them when the sun sets.
+        if config.respect_manual_close:
+            current_tilt = self._get_cover_tilt(config.entity_id)
+            if current_tilt is not None and current_tilt < config.manual_close_threshold:
+                LOGGER.debug(
+                    "No sun: cover %s tilt at %.1f%% (below threshold %d%%), respecting manual close",
+                    config.entity_id,
+                    current_tilt,
+                    config.manual_close_threshold,
+                )
+                return False
+
+        # Respect manual open even in the no-sun path.
+        # If the user raised the cover (e.g. to step outside), don't override that position
+        # with a no-sun action such as "open to 100%".
+        if config.respect_manual_open:
+            current_position = self._get_cover_position(config.entity_id)
+            if current_position is not None and current_position >= config.manual_open_threshold:
+                LOGGER.debug(
+                    "No sun: cover %s position at %d%% (at or above threshold %d%%), respecting manual open",
+                    config.entity_id,
+                    current_position,
+                    config.manual_open_threshold,
+                )
+                return False
+
         # Check reflection protection first
         if self._is_reflection_protection_active(config):
             tilt = max(float(config.reflection_protection_min_tilt), self._effective_min_tilt(config))

@@ -77,18 +77,22 @@
         },
         "protection": {
           "title": "Schutzoptionen",
-          "description": "Konfigurieren Sie Reflexionsschutz und manuelle Schließerkennung.",
+          "description": "Konfigurieren Sie Reflexionsschutz und manuelle Schließ-/Öffnungserkennung.",
           "data": {
             "reflection_protection_enabled": "Reflexionsschutz aktivieren",
             "reflection_protection_min_tilt": "Minimale Neigung bei Reflexionsschutz",
             "respect_manual_close": "Manuelles Schließen respektieren",
-            "manual_close_threshold_percent": "Schwellenwert für manuelles Schließen"
+            "manual_close_threshold_percent": "Schwellenwert für manuelles Schließen",
+            "respect_manual_open": "Manuelles Öffnen respektieren",
+            "manual_open_threshold_percent": "Schwellenwert für manuelles Öffnen"
           },
           "data_description": {
             "reflection_protection_enabled": "Automatisch minimale Neigung beibehalten, nachdem die Sonne die Fassade passiert hat, um Blendung durch reflektiertes Licht zu verhindern (z.B. von Balkonen). Deaktiviert sich bei Sonnenuntergang. Ohne Reflexionsschutz wird die Abdeckung vollständig geöffnet, wenn die Sonne nicht mehr auf die Fassade trifft.",
             "reflection_protection_min_tilt": "Minimale Neigung, die bei aktivem Reflexionsschutz beibehalten wird",
             "respect_manual_close": "Jalousien nicht stören, die manuell geschlossen wurden",
-            "manual_close_threshold_percent": "Auto-Steuerung überspringen, wenn Neigung unter diesem Prozent liegt (Lamellen geschlossen = Schlafmodus)"
+            "manual_close_threshold_percent": "Auto-Steuerung überspringen, wenn Neigung unter diesem Prozent liegt (Lamellen geschlossen = Schlafmodus)",
+            "respect_manual_open": "Jalousie nicht wieder herunterfahren, wenn sie manuell hochgezogen wurde (z.B. für den Terrassenausgang)",
+            "manual_open_threshold_percent": "Auto-Steuerung überspringen, wenn Position diesen Prozentwert erreicht oder überschreitet (Jalousie hochgezogen = Ausgangsmodus)"
           }
         },
         "reconfigure": {
@@ -117,18 +121,22 @@
         },
         "reconfigure_protection": {
           "title": "Schutzoptionen",
-          "description": "Konfigurieren Sie Reflexionsschutz und manuelle Schließerkennung.",
+          "description": "Konfigurieren Sie Reflexionsschutz und manuelle Schließ-/Öffnungserkennung.",
           "data": {
             "reflection_protection_enabled": "Reflexionsschutz aktivieren",
             "reflection_protection_min_tilt": "Minimale Neigung bei Reflexionsschutz",
             "respect_manual_close": "Manuelles Schließen respektieren",
-            "manual_close_threshold_percent": "Schwellenwert für manuelles Schließen"
+            "manual_close_threshold_percent": "Schwellenwert für manuelles Schließen",
+            "respect_manual_open": "Manuelles Öffnen respektieren",
+            "manual_open_threshold_percent": "Schwellenwert für manuelles Öffnen"
           },
           "data_description": {
             "reflection_protection_enabled": "Automatisch minimale Neigung beibehalten, nachdem die Sonne die Fassade passiert hat, um Blendung durch reflektiertes Licht zu verhindern (z.B. von Balkonen). Deaktiviert sich bei Sonnenuntergang. Ohne Reflexionsschutz wird die Abdeckung vollständig geöffnet, wenn die Sonne nicht mehr auf die Fassade trifft.",
             "reflection_protection_min_tilt": "Minimale Neigung, die bei aktivem Reflexionsschutz beibehalten wird",
             "respect_manual_close": "Jalousien nicht stören, die manuell geschlossen wurden",
-            "manual_close_threshold_percent": "Auto-Steuerung überspringen, wenn Neigung unter diesem Prozent liegt (Lamellen geschlossen = Schlafmodus)"
+            "manual_close_threshold_percent": "Auto-Steuerung überspringen, wenn Neigung unter diesem Prozent liegt (Lamellen geschlossen = Schlafmodus)",
+            "respect_manual_open": "Jalousie nicht wieder herunterfahren, wenn sie manuell hochgezogen wurde (z.B. für den Terrassenausgang)",
+            "manual_open_threshold_percent": "Auto-Steuerung überspringen, wenn Position diesen Prozentwert erreicht oder überschreitet (Jalousie hochgezogen = Ausgangsmodus)"
           }
         }
       },
