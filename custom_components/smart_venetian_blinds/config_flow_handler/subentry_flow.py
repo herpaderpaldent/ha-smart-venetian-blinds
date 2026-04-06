@@ -230,9 +230,7 @@ class CoverSubentryFlowHandler(ConfigSubentryFlow):
 
         if protection_input.get(CONF_RESPECT_MANUAL_CLOSE, False):
             min_tilt = int(tilt_data.get(CONF_MIN_TILT_PERCENT, DEFAULT_MIN_TILT_PERCENT))
-            threshold = int(
-                protection_input.get(CONF_MANUAL_CLOSE_THRESHOLD, DEFAULT_MANUAL_CLOSE_THRESHOLD)
-            )
+            threshold = int(protection_input.get(CONF_MANUAL_CLOSE_THRESHOLD, DEFAULT_MANUAL_CLOSE_THRESHOLD))
             if min_tilt < threshold:
                 errors[CONF_MANUAL_CLOSE_THRESHOLD] = "min_tilt_below_sleep_threshold"
 
@@ -267,7 +265,7 @@ class CoverSubentryFlowHandler(ConfigSubentryFlow):
             return entity_entry.name
 
         # Fall back to entity ID
-        return cover_entity_id.split(".")[-1].replace("_", " ").title()
+        return cover_entity_id.rsplit(".", maxsplit=1)[-1].replace("_", " ").title()
 
 
 __all__ = ["CoverSubentryFlowHandler"]
