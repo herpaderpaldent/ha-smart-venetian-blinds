@@ -293,6 +293,20 @@ class CoverController:
                 )
                 return False
 
+        # Respect manual open even in the no-sun path.
+        # If the user raised the cover (e.g. to step outside), don't override that position
+        # with a no-sun action such as "open to 100%".
+        if config.respect_manual_open:
+            current_position = self._get_cover_position(config.entity_id)
+            if current_position is not None and current_position >= config.manual_open_threshold:
+                LOGGER.debug(
+                    "No sun: cover %s position at %d%% (at or above threshold %d%%), respecting manual open",
+                    config.entity_id,
+                    current_position,
+                    config.manual_open_threshold,
+                )
+                return False
+
         # Check reflection protection first
         if self._is_reflection_protection_active(config):
             tilt = max(float(config.reflection_protection_min_tilt), self._effective_min_tilt(config))
