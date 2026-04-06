@@ -107,4 +107,3 @@ class TestNoSunActionAppliedReset:
         assert result.sun_is_behind_facade is True
         # Flag must be left unchanged (not reset, not set)
         assert state.no_sun_action_applied is True
-
