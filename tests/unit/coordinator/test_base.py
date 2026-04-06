@@ -29,8 +29,8 @@ def _make_coordinator(*, sun_position: SunPosition | None) -> SmartVenetianBlind
     config_entry.runtime_data.state = GroupState()
 
     coordinator = SmartVenetianBlindsDataUpdateCoordinator.__new__(SmartVenetianBlindsDataUpdateCoordinator)
-    coordinator._hass = hass  # noqa: SLF001
-    coordinator._sun_provider = sun_provider  # noqa: SLF001
+    coordinator._hass = hass
+    coordinator._sun_provider = sun_provider
     coordinator.config_entry = config_entry
     coordinator.logger = MagicMock()
     return coordinator
@@ -60,7 +60,7 @@ class TestNoSunActionAppliedReset:
         state.no_sun_action_applied = True
         state.sun_has_hit_facade = False
 
-        result = coordinator._calculate_slat_angle()  # noqa: SLF001
+        result = coordinator._calculate_slat_angle()
 
         assert result is None
         assert state.no_sun_action_applied is True, (
@@ -73,7 +73,7 @@ class TestNoSunActionAppliedReset:
         state = coordinator.config_entry.runtime_data.state
         state.sun_has_hit_facade = True
 
-        coordinator._calculate_slat_angle()  # noqa: SLF001
+        coordinator._calculate_slat_angle()
 
         assert state.sun_has_hit_facade is False
 
@@ -85,7 +85,7 @@ class TestNoSunActionAppliedReset:
         state.no_sun_action_applied = True
         state.sun_has_hit_facade = False
 
-        result = coordinator._calculate_slat_angle()  # noqa: SLF001
+        result = coordinator._calculate_slat_angle()
 
         assert result is not None
         assert result.sun_is_behind_facade is False
@@ -101,7 +101,7 @@ class TestNoSunActionAppliedReset:
 
         state.no_sun_action_applied = True
 
-        result = coordinator._calculate_slat_angle()  # noqa: SLF001
+        result = coordinator._calculate_slat_angle()
 
         assert result is not None
         assert result.sun_is_behind_facade is True
