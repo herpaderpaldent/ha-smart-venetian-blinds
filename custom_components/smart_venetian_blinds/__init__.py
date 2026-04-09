@@ -19,7 +19,7 @@ from homeassistant.const import Platform
 import homeassistant.helpers.config_validation as cv
 from homeassistant.loader import async_get_loaded_integration
 
-from .const import DOMAIN, LOGGER
+from .const import CONF_POSITION_TIMEOUT, DEFAULT_POSITION_TIMEOUT, DOMAIN, LOGGER
 from .coordinator import SmartVenetianBlindsDataUpdateCoordinator
 from .coordinator.state import GroupState
 from .cover_control import CoverController
@@ -114,6 +114,7 @@ async def async_setup_entry(
             hass,
             sun_has_hit_facade=state.sun_has_hit_facade,
             first_facade_hit_this_cycle=state.is_first_facade_hit,
+            position_timeout_sec=entry.options.get(CONF_POSITION_TIMEOUT, DEFAULT_POSITION_TIMEOUT),
         )
         results = await controller.apply_to_all_covers(
             entry.subentries,

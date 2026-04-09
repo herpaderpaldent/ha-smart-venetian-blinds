@@ -160,11 +160,13 @@
         "description": "Adjust update throttling settings.",
         "data": {
           "change_threshold_deg": "Change threshold",
-          "min_update_interval_sec": "Minimum update interval"
+          "min_update_interval_sec": "Minimum update interval",
+          "position_timeout_sec": "Position timeout"
         },
         "data_description": {
           "change_threshold_deg": "Minimum angle change (in degrees) to trigger an update",
-          "min_update_interval_sec": "Minimum time (in seconds) between cover updates"
+          "min_update_interval_sec": "Minimum time (in seconds) between cover updates",
+          "position_timeout_sec": "Maximum time (in seconds) to wait for a cover to reach its drive position before applying tilt. Increase this for slow covers."
         }
       }
     }

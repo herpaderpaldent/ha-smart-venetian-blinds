@@ -42,6 +42,7 @@ from custom_components.smart_venetian_blinds.const import (
     DEFAULT_NO_SUN_BEHAVIOR,
     DEFAULT_NO_SUN_POSITION,
     DEFAULT_OBSTACLE_ELEVATION_DEG,
+    DEFAULT_POSITION_TIMEOUT,
     DEFAULT_REFLECTION_PROTECTION_ENABLED,
     DEFAULT_REFLECTION_PROTECTION_END_TIME,
     DEFAULT_REFLECTION_PROTECTION_MIN_TILT,
@@ -129,8 +130,7 @@ class CoverController:
     - Tilt inversion support
     """
 
-    # Timeouts and tolerances
-    POSITION_TIMEOUT_SEC = 60
+    # Position tolerance — class-level constant (not user-configurable)
     POSITION_TOLERANCE_PERCENT = 2
 
     def __init__(
@@ -139,11 +139,13 @@ class CoverController:
         *,
         sun_has_hit_facade: bool = False,
         first_facade_hit_this_cycle: bool = False,
+        position_timeout_sec: int = DEFAULT_POSITION_TIMEOUT,
     ) -> None:
         """Initialize the cover controller."""
         self._hass = hass
         self._sun_has_hit_facade = sun_has_hit_facade
         self._first_facade_hit_this_cycle = first_facade_hit_this_cycle
+        self._position_timeout_sec = position_timeout_sec
 
     async def apply_calculation(
         self,
@@ -474,7 +476,7 @@ class CoverController:
         elapsed = 0.0
         interval = 0.5
 
-        while elapsed < self.POSITION_TIMEOUT_SEC:
+        while elapsed < self._position_timeout_sec:
             current = self._get_cover_position(entity_id)
             if current is not None:
                 if abs(current - target_position) <= self.POSITION_TOLERANCE_PERCENT:

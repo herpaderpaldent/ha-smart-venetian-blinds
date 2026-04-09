@@ -160,11 +160,13 @@
         "description": "Update-Drosselungseinstellungen anpassen.",
         "data": {
           "change_threshold_deg": "Änderungsschwellenwert",
-          "min_update_interval_sec": "Minimales Update-Intervall"
+          "min_update_interval_sec": "Minimales Update-Intervall",
+          "position_timeout_sec": "Positions-Timeout"
         },
         "data_description": {
           "change_threshold_deg": "Minimale Winkeländerung (in Grad), um ein Update auszulösen",
-          "min_update_interval_sec": "Minimale Zeit (in Sekunden) zwischen Abdeckungs-Updates"
+          "min_update_interval_sec": "Minimale Zeit (in Sekunden) zwischen Abdeckungs-Updates",
+          "position_timeout_sec": "Maximale Wartezeit (in Sekunden) bis die Abdeckung ihre Fahrposition erreicht, bevor die Neigung angewendet wird. Für langsame Abdeckungen erhöhen."
         }
       }
     }
