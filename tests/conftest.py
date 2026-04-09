@@ -59,6 +59,7 @@ def calculation_result_direct_sun() -> SlatCalculationResult:
         profile_angle_deg=60.0,
         horizontal_shadow_angle_deg=0.0,
         sun_is_behind_facade=False,
+        sun_elevation_deg=30.0,
     )
 
 
@@ -71,6 +72,7 @@ def calculation_result_behind_facade() -> SlatCalculationResult:
         profile_angle_deg=0.0,
         horizontal_shadow_angle_deg=120.0,
         sun_is_behind_facade=True,
+        sun_elevation_deg=30.0,
     )
 
 

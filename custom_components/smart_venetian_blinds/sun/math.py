@@ -27,6 +27,7 @@ class SlatCalculationResult:
     profile_angle_deg: float  # Vertical shadow angle (omega)
     horizontal_shadow_angle_deg: float  # HSA
     sun_is_behind_facade: bool  # True if sun doesn't hit this facade
+    sun_elevation_deg: float  # Elevation of sun when this result was calculated
 
 
 def normalize_angle_180(angle_deg: float) -> float:
@@ -83,6 +84,7 @@ def calculate_slat_angle(
             profile_angle_deg=0.0,
             horizontal_shadow_angle_deg=hsa_deg,
             sun_is_behind_facade=True,
+            sun_elevation_deg=sun.elevation_deg,
         )
 
     # Step B: Profile Angle (Omega) - vertical shadow angle
@@ -138,6 +140,7 @@ def calculate_slat_angle(
         profile_angle_deg=round(omega_deg, 1),
         horizontal_shadow_angle_deg=round(hsa_deg, 1),
         sun_is_behind_facade=False,
+        sun_elevation_deg=sun.elevation_deg,
     )
 
 

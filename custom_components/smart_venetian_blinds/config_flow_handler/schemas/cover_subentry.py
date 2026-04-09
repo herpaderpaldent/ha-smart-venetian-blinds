@@ -24,6 +24,7 @@ from custom_components.smart_venetian_blinds.const import (
     CONF_MIN_ANGLE,
     CONF_MIN_TILT_PERCENT,
     CONF_MINIMUM_TILT_CHANGE,
+    CONF_OBSTACLE_ELEVATION_DEG,
     CONF_REFLECTION_PROTECTION_ENABLED,
     CONF_REFLECTION_PROTECTION_MIN_TILT,
     CONF_RESPECT_MANUAL_CLOSE,
@@ -37,6 +38,7 @@ from custom_components.smart_venetian_blinds.const import (
     DEFAULT_MIN_ANGLE,
     DEFAULT_MIN_TILT_PERCENT,
     DEFAULT_MINIMUM_TILT_CHANGE,
+    DEFAULT_OBSTACLE_ELEVATION_DEG,
     DEFAULT_REFLECTION_PROTECTION_ENABLED,
     DEFAULT_REFLECTION_PROTECTION_MIN_TILT,
     DEFAULT_RESPECT_MANUAL_CLOSE,
@@ -152,6 +154,18 @@ def get_cover_tilt_schema(
                     max=100,
                     step=1,
                     unit_of_measurement="%",
+                    mode=selector.NumberSelectorMode.SLIDER,
+                ),
+            ),
+            vol.Optional(
+                CONF_OBSTACLE_ELEVATION_DEG,
+                default=defaults.get(CONF_OBSTACLE_ELEVATION_DEG, DEFAULT_OBSTACLE_ELEVATION_DEG),
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0,
+                    max=90,
+                    step=1,
+                    unit_of_measurement="°",
                     mode=selector.NumberSelectorMode.SLIDER,
                 ),
             ),
@@ -393,6 +407,18 @@ def get_cover_subentry_schema(
                     max=100,
                     step=1,
                     unit_of_measurement="%",
+                    mode=selector.NumberSelectorMode.SLIDER,
+                ),
+            ),
+            vol.Optional(
+                CONF_OBSTACLE_ELEVATION_DEG,
+                default=defaults.get(CONF_OBSTACLE_ELEVATION_DEG, DEFAULT_OBSTACLE_ELEVATION_DEG),
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0,
+                    max=90,
+                    step=1,
+                    unit_of_measurement="°",
                     mode=selector.NumberSelectorMode.SLIDER,
                 ),
             ),
