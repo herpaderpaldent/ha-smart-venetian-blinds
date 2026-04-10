@@ -1,0 +1,555 @@
+#!/usr/bin/env python3
+"""
+Generate behavior diagrams for the smart_venetian_blinds integration.
+
+Produces 4 SVG charts in docs/images/ that illustrate how the integration
+reacts to different sun positions and user interactions. Each chart uses
+the actual calculate_slat_angle() function from the integration so the
+diagrams always reflect the real code.
+
+Usage:
+    python3 script/visualize
+
+Requirements:
+    pip install matplotlib
+"""
+
+from __future__ import annotations
+
+import math
+import sys
+from pathlib import Path
+
+# Make the integration importable from the repo root
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+import matplotlib.patches as mpatches  # noqa: E402
+import matplotlib.pyplot as plt
+import matplotlib.ticker as mticker
+import numpy as np
+from matplotlib.patches import FancyBboxPatch
+
+# Import sun math directly to avoid pulling in homeassistant dependencies
+# from the package __init__.py
+import importlib.util
+import os
+
+_math_path = os.path.join(
+    os.path.dirname(__file__), "..",
+    "custom_components", "smart_venetian_blinds", "sun", "math.py",
+)
+_spec = importlib.util.spec_from_file_location("svb_math", _math_path)
+_mod  = importlib.util.module_from_spec(_spec)  # type: ignore[arg-type]
+sys.modules["svb_math"] = _mod  # register before exec so dataclass __module__ resolves
+_spec.loader.exec_module(_mod)  # type: ignore[union-attr]
+
+SunPosition         = _mod.SunPosition
+calculate_slat_angle = _mod.calculate_slat_angle
+
+# ---------------------------------------------------------------------------
+# Location / day parameters  (Central Europe, south-facing facade, summer day)
+# ---------------------------------------------------------------------------
+FACADE_AZIMUTH_DEG = 180          # South-facing facade
+SLAT_WIDTH_MM      = 80           # Slat width
+SLAT_SPACING_MM    = 70           # Slat spacing (centre-to-centre)
+SAFETY_MARGIN_DEG  = 0            # No extra safety margin
+
+# Simulated day (minutes from midnight)
+SUNRISE_MIN  = 6 * 60             # 06:00
+SUNSET_MIN   = 20 * 60 + 30      # 20:30
+SOLAR_NOON   = (SUNRISE_MIN + SUNSET_MIN) / 2  # ~13:15
+PEAK_ELEV    = 62.0               # Max elevation at solar noon (°), ~47°N summer
+PEAK_AZIMUTH = 180.0              # Sun due south at noon
+
+RESOLUTION   = 1                  # Minutes per data point
+
+
+# ---------------------------------------------------------------------------
+# Colours
+# ---------------------------------------------------------------------------
+C_SUN    = "#E8A000"   # amber
+C_TILT   = "#1565C0"   # blue
+C_POS    = "#2E7D32"   # green
+C_SHADE  = "#BDBDBD"   # light grey for shaded periods
+C_OBS    = "#D32F2F"   # red for obstacle threshold
+
+
+# ---------------------------------------------------------------------------
+# Sun arc simulation
+# ---------------------------------------------------------------------------
+def sun_elevation(t_min: float) -> float:
+    """Return simulated sun elevation (°) at time t_min (minutes from midnight)."""
+    if t_min <= SUNRISE_MIN or t_min >= SUNSET_MIN:
+        return 0.0
+    frac = (t_min - SUNRISE_MIN) / (SUNSET_MIN - SUNRISE_MIN)
+    return max(0.0, PEAK_ELEV * math.sin(math.pi * frac))
+
+
+def sun_azimuth(t_min: float) -> float:
+    """Return simulated sun azimuth (°) at time t_min (minutes from midnight).
+
+    Ranges from ~90° (east) at sunrise to ~270° (west) at sunset.
+    """
+    if t_min <= SUNRISE_MIN:
+        return 90.0
+    if t_min >= SUNSET_MIN:
+        return 270.0
+    frac = (t_min - SUNRISE_MIN) / (SUNSET_MIN - SUNRISE_MIN)
+    return 90.0 + 180.0 * frac
+
+
+def sun_position(t_min: float) -> SunPosition:
+    """Return a SunPosition for time t_min."""
+    return SunPosition(
+        azimuth_deg=sun_azimuth(t_min),
+        elevation_deg=sun_elevation(t_min),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Cover logic helpers
+# ---------------------------------------------------------------------------
+NO_SUN_TILT = 100.0   # "open" no-sun behaviour → tilt 100% (slats horizontal)
+
+def calculate_tilt(t_min: float, obstacle_elevation_deg: float = 0.0) -> float:
+    """
+    Return the tilt percent the integration would apply at time t_min.
+
+    Returns NO_SUN_TILT when:
+      - Sun is below the real horizon, OR
+      - Sun is behind the facade, OR
+      - Sun elevation <= obstacle_elevation_deg (obstacle feature)
+    """
+    sp = sun_position(t_min)
+    if sp.elevation_deg <= 0:
+        return NO_SUN_TILT
+
+    if obstacle_elevation_deg > 0 and sp.elevation_deg <= obstacle_elevation_deg:
+        return NO_SUN_TILT
+
+    result = calculate_slat_angle(
+        sun=sp,
+        facade_azimuth_deg=FACADE_AZIMUTH_DEG,
+        slat_width_mm=SLAT_WIDTH_MM,
+        slat_spacing_mm=SLAT_SPACING_MM,
+        safety_margin_deg=SAFETY_MARGIN_DEG,
+    )
+    if result is None or result.sun_is_behind_facade:
+        return NO_SUN_TILT
+    return result.slat_tilt_percent
+
+
+# ---------------------------------------------------------------------------
+# Time axis helpers
+# ---------------------------------------------------------------------------
+START_MIN = 5 * 60   # 05:00
+END_MIN   = 21 * 60  # 21:00
+
+times = list(range(START_MIN, END_MIN + 1, RESOLUTION))
+t_hours = [t / 60 for t in times]
+
+
+def fmt_time(h: float) -> str:
+    hh = int(h)
+    mm = int((h - hh) * 60)
+    return f"{hh:02d}:{mm:02d}"
+
+
+# ---------------------------------------------------------------------------
+# Shared plot setup
+# ---------------------------------------------------------------------------
+FIGSIZE = (12, 7)
+DPI     = 120
+
+
+def make_figure(title: str, subtitle: str) -> tuple:
+    fig, (ax_sun, ax_tilt) = plt.subplots(
+        2, 1, figsize=FIGSIZE, dpi=DPI,
+        gridspec_kw={"height_ratios": [1, 2], "hspace": 0.08},
+        sharex=True,
+    )
+    fig.suptitle(title, fontsize=15, fontweight="bold", y=0.97)
+    ax_sun.set_title(subtitle, fontsize=10, color="#555555", pad=4)
+    return fig, ax_sun, ax_tilt
+
+
+def style_sun_ax(ax, elevations: list[float]) -> None:
+    ax.fill_between(t_hours, elevations, alpha=0.15, color=C_SUN)
+    ax.plot(t_hours, elevations, color=C_SUN, linewidth=2, label="Sun elevation")
+    ax.set_ylabel("Sun elevation (°)", fontsize=9)
+    ax.set_ylim(-5, PEAK_ELEV + 10)
+    ax.axhline(0, color="#999999", linewidth=0.8, linestyle="--")
+    ax.yaxis.set_major_locator(mticker.MultipleLocator(15))
+    ax.grid(axis="y", linestyle=":", alpha=0.4)
+    ax.tick_params(labelbottom=False)
+
+
+def style_tilt_ax(ax) -> None:
+    ax.set_ylabel("Cover tilt (%)", fontsize=9)
+    ax.set_xlabel("Time of day", fontsize=9)
+    ax.set_xlim(START_MIN / 60, END_MIN / 60)
+    ax.set_ylim(-5, 110)
+    ax.yaxis.set_major_locator(mticker.MultipleLocator(25))
+    ax.grid(axis="y", linestyle=":", alpha=0.4)
+    # X tick labels as HH:MM
+    hours_ticks = list(range(5, 22))
+    ax.set_xticks(hours_ticks)
+    ax.set_xticklabels([f"{h:02d}:00" for h in hours_ticks], fontsize=8)
+    ax.tick_params(axis="x", rotation=30)
+
+
+def add_param_box(ax, params: dict[str, str]) -> None:
+    """Add a parameter info box to the lower-left of the axis."""
+    lines = [f"{k}: {v}" for k, v in params.items()]
+    text = "\n".join(lines)
+    props = dict(boxstyle="round,pad=0.5", facecolor="white",
+                 edgecolor="#AAAAAA", alpha=0.85)
+    ax.text(
+        0.01, 0.04, text,
+        transform=ax.transAxes,
+        fontsize=7.5,
+        verticalalignment="bottom",
+        bbox=props,
+        family="monospace",
+    )
+
+
+def save(fig, name: str) -> None:
+    out = Path(__file__).parent.parent / "docs" / "images" / name
+    out.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out, format="svg", bbox_inches="tight")
+    print(f"  Saved → {out.relative_to(Path(__file__).parent.parent)}")
+    plt.close(fig)
+
+
+# ---------------------------------------------------------------------------
+# Chart 1: Vanilla (standard tracking)
+# ---------------------------------------------------------------------------
+def chart_vanilla() -> None:
+    tilts = [calculate_tilt(t) for t in times]
+    elevs = [sun_elevation(t) for t in times]
+
+    fig, ax_sun, ax_tilt = make_figure(
+        "Smart Venetian Blinds — Standard Sun Tracking",
+        "Cover tilt follows the calculated sun cut-off angle. "
+        "No-sun behaviour (open) applied at sunrise, facade-miss, and sunset.",
+    )
+
+    style_sun_ax(ax_sun, elevs)
+    ax_sun.legend(loc="upper right", fontsize=8)
+
+    ax_tilt.plot(t_hours, tilts, color=C_TILT, linewidth=2, label="Cover tilt")
+    ax_tilt.fill_between(t_hours, tilts, alpha=0.12, color=C_TILT)
+
+    # Annotate key zones
+    ax_tilt.annotate(
+        "Sun behind\nfacade (east)",
+        xy=(7.5, calculate_tilt(7 * 60 + 30)),
+        xytext=(7.5, 60),
+        fontsize=8, ha="center", color="#555",
+        arrowprops=dict(arrowstyle="->", color="#888", lw=0.8),
+    )
+    ax_tilt.annotate(
+        "Tracking\nsun",
+        xy=(12.5, calculate_tilt(12 * 60 + 30)),
+        xytext=(12.5, 80),
+        fontsize=8, ha="center", color="#555",
+        arrowprops=dict(arrowstyle="->", color="#888", lw=0.8),
+    )
+    ax_tilt.annotate(
+        "No-sun:\ncover opens",
+        xy=(20.0, 100),
+        xytext=(19.2, 65),
+        fontsize=8, ha="center", color="#555",
+        arrowprops=dict(arrowstyle="->", color="#888", lw=0.8),
+    )
+
+    style_tilt_ax(ax_tilt)
+    ax_tilt.legend(loc="upper right", fontsize=8)
+
+    add_param_box(ax_tilt, {
+        "Facade azimuth":  f"{FACADE_AZIMUTH_DEG}° (south)",
+        "Slat width":      f"{SLAT_WIDTH_MM} mm",
+        "Slat spacing":    f"{SLAT_SPACING_MM} mm",
+        "Safety margin":   f"{SAFETY_MARGIN_DEG}°",
+        "No-sun behaviour":"open (tilt 100%)",
+        "Peak sun elev.":  f"{PEAK_ELEV}° at {fmt_time(SOLAR_NOON / 60)}",
+    })
+
+    save(fig, "vanilla.svg")
+
+
+# ---------------------------------------------------------------------------
+# Chart 2: Obstacle elevation
+# ---------------------------------------------------------------------------
+def chart_obstacle() -> None:
+    OBSTACLE_DEG = 15.0
+
+    tilts_vanilla  = [calculate_tilt(t, obstacle_elevation_deg=0)           for t in times]
+    tilts_obstacle = [calculate_tilt(t, obstacle_elevation_deg=OBSTACLE_DEG) for t in times]
+    elevs = [sun_elevation(t) for t in times]
+
+    fig, ax_sun, ax_tilt = make_figure(
+        "Smart Venetian Blinds — Obstacle Horizon (15°)",
+        f"When sun elevation ≤ {OBSTACLE_DEG}°, this cover treats the sun as below the horizon. "
+        "Useful for windows with overhangs, balconies, or nearby buildings.",
+    )
+
+    # Sun axis — add obstacle line
+    style_sun_ax(ax_sun, elevs)
+    ax_sun.axhline(OBSTACLE_DEG, color=C_OBS, linewidth=1.2,
+                   linestyle="--", label=f"Obstacle threshold ({OBSTACLE_DEG}°)")
+    ax_sun.legend(loc="upper right", fontsize=8)
+
+    # Tilt axis — both curves
+    ax_tilt.plot(t_hours, tilts_vanilla, color=C_TILT, linewidth=1.2,
+                 linestyle="--", alpha=0.4, label="Without obstacle")
+    ax_tilt.plot(t_hours, tilts_obstacle, color=C_TILT, linewidth=2,
+                 label="With obstacle (15°)")
+    ax_tilt.fill_between(t_hours, tilts_obstacle, alpha=0.12, color=C_TILT)
+
+    # Shade the "blocked by obstacle" periods
+    blocked = [elev <= OBSTACLE_DEG and elev > 0 for elev in elevs]
+    _shade_periods(ax_tilt, t_hours, blocked,
+                   label="Sun below obstacle threshold", color=C_OBS)
+
+    ax_tilt.annotate(
+        "Sun below obstacle\n→ no-sun behaviour",
+        xy=(8.5, 100), xytext=(8.5, 70),
+        fontsize=8, ha="center", color=C_OBS,
+        arrowprops=dict(arrowstyle="->", color=C_OBS, lw=0.8),
+    )
+    ax_tilt.annotate(
+        "Sun clears obstacle\n→ tracking starts",
+        xy=(10.2, calculate_tilt(10 * 60 + 12, OBSTACLE_DEG)),
+        xytext=(10.2, 55),
+        fontsize=8, ha="center", color="#555",
+        arrowprops=dict(arrowstyle="->", color="#888", lw=0.8),
+    )
+
+    style_tilt_ax(ax_tilt)
+    ax_tilt.legend(loc="upper right", fontsize=8)
+
+    add_param_box(ax_tilt, {
+        "Facade azimuth":       f"{FACADE_AZIMUTH_DEG}° (south)",
+        "Slat width":           f"{SLAT_WIDTH_MM} mm",
+        "Slat spacing":         f"{SLAT_SPACING_MM} mm",
+        "Obstacle elev. angle": f"{OBSTACLE_DEG}° (e.g. balcony overhang)",
+        "No-sun behaviour":     "open (tilt 100%)",
+        "Measurement tip":      "use a clinometer app at the window",
+    })
+
+    save(fig, "obstacle.svg")
+
+
+# ---------------------------------------------------------------------------
+# Chart 3: Sleep / manual-close protection
+# ---------------------------------------------------------------------------
+def chart_sleep() -> None:
+    SLEEP_THRESHOLD = 5    # manual_close_threshold (%)
+    SLEEP_TILT      = 0    # user sets tilt to 0% (closed slats)
+    SLEEP_PERIODS   = [
+        (0,       10 * 60),   # Night sleep until 10:00
+        (14 * 60, 16 * 60),   # Siesta 14:00–16:00
+    ]
+
+    def is_sleeping(t: float) -> bool:
+        for start, end in SLEEP_PERIODS:
+            if start <= t <= end:
+                return True
+        return False
+
+    tilts = []
+    for t in times:
+        if is_sleeping(t):
+            tilts.append(float(SLEEP_TILT))      # user keeps cover closed
+        else:
+            tilts.append(calculate_tilt(t))
+
+    elevs = [sun_elevation(t) for t in times]
+
+    fig, ax_sun, ax_tilt = make_figure(
+        "Smart Venetian Blinds — Sleep / Manual-Close Protection",
+        f"When cover tilt drops below {SLEEP_THRESHOLD}% (manually closed by user), "
+        "the integration pauses and won't override. "
+        "Covers two periods: overnight sleep + afternoon siesta.",
+    )
+
+    style_sun_ax(ax_sun, elevs)
+    ax_sun.legend(loc="upper right", fontsize=8)
+
+    sleeping_mask = [is_sleeping(t) for t in times]
+    _shade_periods(ax_sun, t_hours, sleeping_mask,
+                   label="User sleeping (cover closed)", color=C_SHADE, alpha=0.35)
+    _shade_periods(ax_tilt, t_hours, sleeping_mask,
+                   label="Auto-control paused (tilt < threshold)", color=C_SHADE, alpha=0.35)
+
+    ax_tilt.plot(t_hours, tilts, color=C_TILT, linewidth=2, label="Cover tilt")
+    ax_tilt.fill_between(t_hours, tilts, alpha=0.12, color=C_TILT)
+    ax_tilt.axhline(SLEEP_THRESHOLD, color="#FF6F00", linewidth=1,
+                    linestyle=":", label=f"Manual-close threshold ({SLEEP_THRESHOLD}%)")
+
+    # Annotations
+    ax_tilt.annotate(
+        "Sleeping — cover closed\n(tilt < 5% → auto paused)",
+        xy=(8.0, 0), xytext=(8.0, 40),
+        fontsize=8, ha="center", color="#555",
+        arrowprops=dict(arrowstyle="->", color="#888", lw=0.8),
+    )
+    ax_tilt.annotate(
+        "Wakes up at 10:00\n→ tracking resumes",
+        xy=(10.0, calculate_tilt(10 * 60)),
+        xytext=(10.8, 65),
+        fontsize=8, ha="center", color="#555",
+        arrowprops=dict(arrowstyle="->", color="#888", lw=0.8),
+    )
+    ax_tilt.annotate(
+        "Siesta 14:00–16:00\n(cover closed again)",
+        xy=(15.0, 0), xytext=(15.5, 40),
+        fontsize=8, ha="center", color="#555",
+        arrowprops=dict(arrowstyle="->", color="#888", lw=0.8),
+    )
+    ax_tilt.annotate(
+        "Resumes at 16:00",
+        xy=(16.0, calculate_tilt(16 * 60)),
+        xytext=(17.0, 65),
+        fontsize=8, ha="center", color="#555",
+        arrowprops=dict(arrowstyle="->", color="#888", lw=0.8),
+    )
+
+    style_tilt_ax(ax_tilt)
+    ax_tilt.legend(loc="upper right", fontsize=8, ncol=2)
+
+    add_param_box(ax_tilt, {
+        "Facade azimuth":          f"{FACADE_AZIMUTH_DEG}° (south)",
+        "Manual-close threshold":  f"{SLEEP_THRESHOLD}% tilt",
+        "Sleep period 1":          "until 10:00 (overnight)",
+        "Sleep period 2":          "14:00–16:00 (siesta)",
+        "Trigger":                 "User sets tilt < threshold → auto pauses",
+        "Resume":                  "User raises tilt above threshold",
+    })
+
+    save(fig, "sleep.svg")
+
+
+# ---------------------------------------------------------------------------
+# Chart 4: Exit mode / manual-open detection
+# ---------------------------------------------------------------------------
+def chart_exit() -> None:
+    OPEN_THRESHOLD   = 90   # manual_open_threshold (position %)
+    EXIT_START_MIN   = 12 * 60       # 12:00 user goes outside
+    EXIT_END_MIN     = 13 * 60 + 30  # 13:30 user comes back in
+
+    # Cover position: normally at drive_position (0%), during exit at 95%
+    DRIVE_POS    = 0    # blinds driven fully down before tilting
+    EXIT_POS     = 95   # user raised the cover
+
+    def cover_pos(t: float) -> float:
+        if EXIT_START_MIN <= t <= EXIT_END_MIN:
+            return float(EXIT_POS)
+        return float(DRIVE_POS)
+
+    def cover_tilt(t: float) -> float:
+        if EXIT_START_MIN <= t <= EXIT_END_MIN:
+            return 100.0  # cover is open (raised)
+        return calculate_tilt(t)
+
+    tilts  = [cover_tilt(t) for t in times]
+    elevs  = [sun_elevation(t) for t in times]
+
+    fig, ax_sun, ax_tilt = make_figure(
+        "Smart Venetian Blinds — Exit Mode (Manual-Open Detection)",
+        f"When cover position ≥ {OPEN_THRESHOLD}% (user raised it, e.g. to step outside), "
+        "the integration pauses. Tracking resumes once the cover is lowered again.",
+    )
+
+    style_sun_ax(ax_sun, elevs)
+    ax_sun.legend(loc="upper right", fontsize=8)
+
+    exit_mask = [EXIT_START_MIN <= t <= EXIT_END_MIN for t in times]
+    _shade_periods(ax_sun, t_hours, exit_mask, label="User outside (cover raised)", color=C_POS, alpha=0.2)
+    _shade_periods(ax_tilt, t_hours, exit_mask, label="Auto-control paused (position ≥ 90%)", color=C_POS, alpha=0.2)
+
+    ax_tilt.plot(t_hours, tilts, color=C_TILT, linewidth=2, label="Cover tilt")
+    ax_tilt.fill_between(t_hours, tilts, alpha=0.12, color=C_TILT)
+
+    # Event markers
+    ax_tilt.axvline(EXIT_START_MIN / 60, color=C_POS, linewidth=1.2, linestyle="--")
+    ax_tilt.axvline(EXIT_END_MIN / 60, color=C_POS, linewidth=1.2, linestyle="--")
+
+    ax_tilt.annotate(
+        "12:00 — User opens terrace door,\nraises cover to 95%\n→ auto-control pauses",
+        xy=(EXIT_START_MIN / 60, 100), xytext=(10.8, 85),
+        fontsize=8, ha="center", color=C_POS,
+        arrowprops=dict(arrowstyle="->", color=C_POS, lw=0.8),
+    )
+    ax_tilt.annotate(
+        "13:30 — User lowers cover again\n→ tracking resumes",
+        xy=(EXIT_END_MIN / 60, calculate_tilt(EXIT_END_MIN)),
+        xytext=(15.5, 80),
+        fontsize=8, ha="center", color="#555",
+        arrowprops=dict(arrowstyle="->", color="#888", lw=0.8),
+    )
+
+    style_tilt_ax(ax_tilt)
+    ax_tilt.legend(loc="upper right", fontsize=8, ncol=2)
+
+    add_param_box(ax_tilt, {
+        "Facade azimuth":         f"{FACADE_AZIMUTH_DEG}° (south)",
+        "Manual-open threshold":  f"{OPEN_THRESHOLD}% position",
+        "Exit start":             fmt_time(EXIT_START_MIN / 60),
+        "Exit end":               fmt_time(EXIT_END_MIN / 60),
+        "Trigger":                "User raises cover ≥ threshold → auto pauses",
+        "Resume":                 "User lowers cover below threshold",
+    })
+
+    save(fig, "exit.svg")
+
+
+# ---------------------------------------------------------------------------
+# Shared helper: shade periods where mask is True
+# ---------------------------------------------------------------------------
+def _shade_periods(
+    ax,
+    x: list[float],
+    mask: list[bool],
+    label: str,
+    color: str,
+    alpha: float = 0.25,
+) -> None:
+    """Draw filled vertical bands wherever mask is True."""
+    in_region = False
+    start_x = 0.0
+    patch_added = False
+    for xi, m in zip(x, mask):
+        if m and not in_region:
+            start_x = xi
+            in_region = True
+        elif not m and in_region:
+            p = ax.axvspan(start_x, xi, alpha=alpha, color=color,
+                           label=label if not patch_added else None)
+            patch_added = True
+            in_region = False
+    if in_region:
+        ax.axvspan(start_x, x[-1], alpha=alpha, color=color,
+                   label=label if not patch_added else None)
+
+
+# ---------------------------------------------------------------------------
+# Entry point
+# ---------------------------------------------------------------------------
+if __name__ == "__main__":
+    print("Generating behavior diagrams…")
+
+    plt.rcParams.update({
+        "font.family":     "sans-serif",
+        "axes.spines.top": False,
+        "axes.spines.right": False,
+    })
+
+    chart_vanilla()
+    chart_obstacle()
+    chart_sleep()
+    chart_exit()
+
+    print("Done. SVGs written to docs/images/")
