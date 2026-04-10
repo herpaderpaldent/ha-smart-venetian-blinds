@@ -15,8 +15,10 @@ import voluptuous as vol
 from custom_components.smart_venetian_blinds.const import (
     CONF_CHANGE_THRESHOLD,
     CONF_MIN_UPDATE_INTERVAL,
+    CONF_POSITION_TIMEOUT,
     DEFAULT_CHANGE_THRESHOLD,
     DEFAULT_MIN_UPDATE_INTERVAL,
+    DEFAULT_POSITION_TIMEOUT,
 )
 from homeassistant.helpers import selector
 
@@ -54,6 +56,18 @@ def get_options_schema(defaults: Mapping[str, Any] | None = None) -> vol.Schema:
                     min=10,
                     max=600,
                     step=10,
+                    unit_of_measurement="s",
+                    mode=selector.NumberSelectorMode.BOX,
+                ),
+            ),
+            vol.Optional(
+                CONF_POSITION_TIMEOUT,
+                default=defaults.get(CONF_POSITION_TIMEOUT, DEFAULT_POSITION_TIMEOUT),
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=30,
+                    max=300,
+                    step=5,
                     unit_of_measurement="s",
                     mode=selector.NumberSelectorMode.BOX,
                 ),
