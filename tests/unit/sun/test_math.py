@@ -363,6 +363,7 @@ class TestSlatCalculationResult:
             profile_angle_deg=60.0,
             horizontal_shadow_angle_deg=10.0,
             sun_is_behind_facade=False,
+            sun_elevation_deg=30.0,
         )
         assert result.slat_angle_deg == 45.0
         assert result.slat_tilt_percent == 50.0
@@ -378,6 +379,7 @@ class TestSlatCalculationResult:
             profile_angle_deg=60.0,
             horizontal_shadow_angle_deg=10.0,
             sun_is_behind_facade=False,
+            sun_elevation_deg=30.0,
         )
         with pytest.raises(AttributeError):
             result.slat_angle_deg = 90.0  # type: ignore[misc]

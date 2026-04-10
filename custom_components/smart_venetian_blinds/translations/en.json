@@ -62,7 +62,8 @@
             "max_angle_deg": "Maximum angle",
             "invert_tilt_percent": "Invert tilt",
             "minimum_tilt_change_percent": "Minimum tilt change",
-            "min_tilt_percent": "Minimum tilt"
+            "min_tilt_percent": "Minimum tilt",
+            "obstacle_elevation_deg": "Obstacle horizon angle"
           },
           "data_description": {
             "cover_entity_id": "The cover entity to control",
@@ -72,7 +73,8 @@
             "max_angle_deg": "Maximum mechanical tilt angle constraint",
             "invert_tilt_percent": "Invert tilt percent if cover uses reversed semantics",
             "minimum_tilt_change_percent": "Only adjust tilt if change exceeds this threshold (reduces motor wear)",
-            "min_tilt_percent": "Floor tilt percentage — calculated tilt will never go below this value (0 = no floor, allow fully closed)"
+            "min_tilt_percent": "Floor tilt percentage — calculated tilt will never go below this value (0 = no floor, allow fully closed)",
+            "obstacle_elevation_deg": "Sun elevation angle (in degrees) below which this cover acts as if the sun is below the horizon, applying the configured no-sun behaviour. Set to 0 to disable. Measure with a clinometer app: stand at the window, aim the phone at the top of the obstacle, and read the angle."
           }
         },
         "protection": {
@@ -106,7 +108,8 @@
             "max_angle_deg": "Maximum angle",
             "invert_tilt_percent": "Invert tilt",
             "minimum_tilt_change_percent": "Minimum tilt change",
-            "min_tilt_percent": "Minimum tilt"
+            "min_tilt_percent": "Minimum tilt",
+            "obstacle_elevation_deg": "Obstacle horizon angle"
           },
           "data_description": {
             "enabled": "Enable automatic control for this cover",
@@ -116,7 +119,8 @@
             "max_angle_deg": "Maximum mechanical tilt angle constraint",
             "invert_tilt_percent": "Invert tilt percent if cover uses reversed semantics",
             "minimum_tilt_change_percent": "Only adjust tilt if change exceeds this threshold (reduces motor wear)",
-            "min_tilt_percent": "Floor tilt percentage — calculated tilt will never go below this value (0 = no floor, allow fully closed)"
+            "min_tilt_percent": "Floor tilt percentage — calculated tilt will never go below this value (0 = no floor, allow fully closed)",
+            "obstacle_elevation_deg": "Sun elevation angle (in degrees) below which this cover acts as if the sun is below the horizon, applying the configured no-sun behaviour. Set to 0 to disable. Measure with a clinometer app: stand at the window, aim the phone at the top of the obstacle, and read the angle."
           }
         },
         "reconfigure_protection": {

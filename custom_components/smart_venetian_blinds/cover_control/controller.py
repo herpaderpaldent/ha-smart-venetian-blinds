@@ -23,6 +23,7 @@ from custom_components.smart_venetian_blinds.const import (
     CONF_MINIMUM_TILT_CHANGE,
     CONF_NO_SUN_BEHAVIOR,
     CONF_NO_SUN_POSITION,
+    CONF_OBSTACLE_ELEVATION_DEG,
     CONF_REFLECTION_PROTECTION_ENABLED,
     CONF_REFLECTION_PROTECTION_END_TIME,
     CONF_REFLECTION_PROTECTION_MIN_TILT,
@@ -40,6 +41,7 @@ from custom_components.smart_venetian_blinds.const import (
     DEFAULT_MINIMUM_TILT_CHANGE,
     DEFAULT_NO_SUN_BEHAVIOR,
     DEFAULT_NO_SUN_POSITION,
+    DEFAULT_OBSTACLE_ELEVATION_DEG,
     DEFAULT_REFLECTION_PROTECTION_ENABLED,
     DEFAULT_REFLECTION_PROTECTION_END_TIME,
     DEFAULT_REFLECTION_PROTECTION_MIN_TILT,
@@ -80,6 +82,7 @@ class CoverConfig:
     min_tilt_percent: int = 0
     respect_manual_open: bool = True
     manual_open_threshold: int = 90
+    obstacle_elevation_deg: float = DEFAULT_OBSTACLE_ELEVATION_DEG
 
     @classmethod
     def from_subentry(cls, subentry: ConfigSubentry) -> CoverConfig:
@@ -112,6 +115,7 @@ class CoverConfig:
                 CONF_REFLECTION_PROTECTION_END_TIME, DEFAULT_REFLECTION_PROTECTION_END_TIME
             ),
             min_tilt_percent=data.get(CONF_MIN_TILT_PERCENT, DEFAULT_MIN_TILT_PERCENT),
+            obstacle_elevation_deg=data.get(CONF_OBSTACLE_ELEVATION_DEG, DEFAULT_OBSTACLE_ELEVATION_DEG),
         )
 
 
@@ -168,6 +172,16 @@ class CoverController:
 
         # Handle no-sun case
         if calculation is None or calculation.sun_is_behind_facade:
+            return await self._handle_no_sun(config)
+
+        # If sun elevation is below cover's obstacle horizon, treat as no-sun
+        if config.obstacle_elevation_deg > 0 and calculation.sun_elevation_deg <= config.obstacle_elevation_deg:
+            LOGGER.debug(
+                "Cover %s: sun elevation %.1f° is below obstacle angle %.1f°, applying no-sun behaviour",
+                config.entity_id,
+                calculation.sun_elevation_deg,
+                config.obstacle_elevation_deg,
+            )
             return await self._handle_no_sun(config)
 
         # Get current cover position

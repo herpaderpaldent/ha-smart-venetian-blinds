@@ -602,6 +602,7 @@ class TestHandleNoSun:
             profile_angle_deg=90.0,
             horizontal_shadow_angle_deg=0.0,
             sun_is_behind_facade=False,
+            sun_elevation_deg=30.0,
         )
 
         result = await controller.apply_calculation(config, calculation_zero_tilt)
@@ -649,6 +650,7 @@ class TestHandleNoSun:
             profile_angle_deg=90.0,
             horizontal_shadow_angle_deg=0.0,
             sun_is_behind_facade=False,
+            sun_elevation_deg=30.0,
         )
 
         result = await controller.apply_calculation(config, calculation_zero_tilt)
@@ -1395,3 +1397,156 @@ class TestManualOpenDetection:
 
         assert result is False
         mock_hass.services.async_call.assert_not_called()
+
+
+@pytest.mark.unit
+class TestObstacleElevation:
+    """Tests for per-cover obstacle elevation angle feature."""
+
+    @pytest.mark.asyncio
+    async def test_applies_no_sun_when_sun_below_obstacle(
+        self,
+        mock_hass: MagicMock,
+    ) -> None:
+        """When sun elevation <= obstacle angle, _handle_no_sun is called instead of tilt."""
+        mock_hass.states.get.return_value = create_mock_state(
+            state="open",
+            attributes={"current_position": 0, "current_tilt_position": 50},
+        )
+        mock_hass.services.async_call = AsyncMock()
+        controller = CoverController(mock_hass)
+
+        config = CoverConfig(
+            entity_id="cover.test",
+            drive_position=0,
+            min_angle=0,
+            max_angle=90,
+            invert_tilt=False,
+            no_sun_behavior="close",  # Sets tilt to 0% — distinct from normal tilt (50%)
+            no_sun_position=50,
+            respect_manual_close=False,
+            manual_close_threshold=5,
+            minimum_tilt_change=0,
+            enabled=True,
+            reflection_protection_enabled=False,
+            reflection_protection_min_tilt=50,
+            reflection_protection_start_time="09:00",
+            reflection_protection_end_time="17:00",
+            obstacle_elevation_deg=20.0,
+        )
+        # Sun is at 15° — below the 20° obstacle threshold
+        calculation = SlatCalculationResult(
+            slat_angle_deg=45.0,
+            slat_tilt_percent=50.0,
+            profile_angle_deg=30.0,
+            horizontal_shadow_angle_deg=0.0,
+            sun_is_behind_facade=False,
+            sun_elevation_deg=15.0,
+        )
+
+        result = await controller.apply_calculation(config, calculation)
+
+        # Should apply no-sun "close" behaviour (tilt to 0%) rather than the 50% normal tilt
+        assert result is True
+        call_args = mock_hass.services.async_call.call_args
+        assert call_args[0][1] == "set_cover_tilt_position"
+        assert call_args[0][2]["tilt_position"] == 0
+
+    @pytest.mark.asyncio
+    async def test_applies_tilt_when_sun_above_obstacle(
+        self,
+        mock_hass: MagicMock,
+    ) -> None:
+        """When sun elevation > obstacle angle, normal tilt is applied."""
+        mock_hass.states.get.return_value = create_mock_state(
+            state="open",
+            attributes={"current_position": 100, "current_tilt_position": 50},
+        )
+        mock_hass.services.async_call = AsyncMock()
+        controller = CoverController(mock_hass)
+
+        config = CoverConfig(
+            entity_id="cover.test",
+            drive_position=100,
+            min_angle=0,
+            max_angle=90,
+            invert_tilt=False,
+            no_sun_behavior="open",
+            no_sun_position=50,
+            respect_manual_close=False,
+            manual_close_threshold=5,
+            minimum_tilt_change=0,
+            enabled=True,
+            reflection_protection_enabled=False,
+            reflection_protection_min_tilt=50,
+            reflection_protection_start_time="09:00",
+            reflection_protection_end_time="17:00",
+            respect_manual_open=False,
+            obstacle_elevation_deg=10.0,
+        )
+        # Sun is at 25° — above the 10° obstacle threshold
+        calculation = SlatCalculationResult(
+            slat_angle_deg=45.0,
+            slat_tilt_percent=50.0,
+            profile_angle_deg=30.0,
+            horizontal_shadow_angle_deg=0.0,
+            sun_is_behind_facade=False,
+            sun_elevation_deg=25.0,
+        )
+
+        result = await controller.apply_calculation(config, calculation)
+
+        # Should apply normal tilt (50%)
+        assert result is True
+        call_args = mock_hass.services.async_call.call_args
+        assert call_args[0][1] == "set_cover_tilt_position"
+        assert call_args[0][2]["tilt_position"] == 50
+
+    @pytest.mark.asyncio
+    async def test_zero_obstacle_angle_is_disabled(
+        self,
+        mock_hass: MagicMock,
+    ) -> None:
+        """obstacle_elevation_deg=0 (default) never triggers no-sun override."""
+        mock_hass.states.get.return_value = create_mock_state(
+            state="open",
+            attributes={"current_position": 100, "current_tilt_position": 50},
+        )
+        mock_hass.services.async_call = AsyncMock()
+        controller = CoverController(mock_hass)
+
+        config = CoverConfig(
+            entity_id="cover.test",
+            drive_position=100,
+            min_angle=0,
+            max_angle=90,
+            invert_tilt=False,
+            no_sun_behavior="open",
+            no_sun_position=50,
+            respect_manual_close=False,
+            manual_close_threshold=5,
+            minimum_tilt_change=0,
+            enabled=True,
+            reflection_protection_enabled=False,
+            reflection_protection_min_tilt=50,
+            reflection_protection_start_time="09:00",
+            reflection_protection_end_time="17:00",
+            respect_manual_open=False,
+            obstacle_elevation_deg=0,  # Disabled
+        )
+        # Sun at a very low elevation — but obstacle check is disabled
+        calculation = SlatCalculationResult(
+            slat_angle_deg=45.0,
+            slat_tilt_percent=50.0,
+            profile_angle_deg=30.0,
+            horizontal_shadow_angle_deg=0.0,
+            sun_is_behind_facade=False,
+            sun_elevation_deg=1.0,
+        )
+
+        result = await controller.apply_calculation(config, calculation)
+
+        # Normal tilt should be applied, not no-sun
+        assert result is True
+        call_args = mock_hass.services.async_call.call_args
+        assert call_args[0][1] == "set_cover_tilt_position"

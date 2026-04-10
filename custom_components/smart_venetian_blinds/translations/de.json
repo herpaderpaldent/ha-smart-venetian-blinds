@@ -62,7 +62,8 @@
             "max_angle_deg": "Maximaler Winkel",
             "invert_tilt_percent": "Neigung invertieren",
             "minimum_tilt_change_percent": "Minimale Neigungsänderung",
-            "min_tilt_percent": "Minimale Neigung"
+            "min_tilt_percent": "Minimale Neigung",
+            "obstacle_elevation_deg": "Hindernis-Höhenwinkel"
           },
           "data_description": {
             "cover_entity_id": "Die zu steuernde Abdeckungs-Entität",
@@ -72,7 +73,8 @@
             "max_angle_deg": "Maximale mechanische Neigungswinkelbeschränkung",
             "invert_tilt_percent": "Neigungsprozent invertieren, falls die Abdeckung umgekehrte Semantik verwendet",
             "minimum_tilt_change_percent": "Neigung nur anpassen, wenn die Änderung diesen Schwellenwert überschreitet (reduziert Motorverschleiß)",
-            "min_tilt_percent": "Mindestwert für Neigungsprozent — der berechnete Wert unterschreitet diesen Wert nie (0 = kein Minimum, vollständiges Schließen erlaubt)"
+            "min_tilt_percent": "Mindestwert für Neigungsprozent — der berechnete Wert unterschreitet diesen Wert nie (0 = kein Minimum, vollständiges Schließen erlaubt)",
+            "obstacle_elevation_deg": "Sonnen-Höhenwinkel (in Grad), unterhalb dessen diese Jalousie so agiert als ob die Sonne unter dem Horizont ist. 0 = deaktiviert. Messen mit einer Klinometer-App: Am Fenster stehen, Telefon auf die Oberkante des Hindernisses richten, Winkel ablesen."
           }
         },
         "protection": {
@@ -106,7 +108,8 @@
             "max_angle_deg": "Maximaler Winkel",
             "invert_tilt_percent": "Neigung invertieren",
             "minimum_tilt_change_percent": "Minimale Neigungsänderung",
-            "min_tilt_percent": "Minimale Neigung"
+            "min_tilt_percent": "Minimale Neigung",
+            "obstacle_elevation_deg": "Hindernis-Höhenwinkel"
           },
           "data_description": {
             "enabled": "Automatische Steuerung für diese Abdeckung aktivieren",
@@ -116,7 +119,8 @@
             "max_angle_deg": "Maximale mechanische Neigungswinkelbeschränkung",
             "invert_tilt_percent": "Neigungsprozent invertieren, falls die Abdeckung umgekehrte Semantik verwendet",
             "minimum_tilt_change_percent": "Neigung nur anpassen, wenn die Änderung diesen Schwellenwert überschreitet (reduziert Motorverschleiß)",
-            "min_tilt_percent": "Mindestwert für Neigungsprozent — der berechnete Wert unterschreitet diesen Wert nie (0 = kein Minimum, vollständiges Schließen erlaubt)"
+            "min_tilt_percent": "Mindestwert für Neigungsprozent — der berechnete Wert unterschreitet diesen Wert nie (0 = kein Minimum, vollständiges Schließen erlaubt)",
+            "obstacle_elevation_deg": "Sonnen-Höhenwinkel (in Grad), unterhalb dessen diese Jalousie so agiert als ob die Sonne unter dem Horizont ist. 0 = deaktiviert. Messen mit einer Klinometer-App: Am Fenster stehen, Telefon auf die Oberkante des Hindernisses richten, Winkel ablesen."
           }
         },
         "reconfigure_protection": {
