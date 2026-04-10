@@ -84,6 +84,33 @@ Where:
 - d = slat spacing
 - L = slat width
 
+### Behavior Diagrams
+
+The diagrams below are generated directly from the integration's own [`calculate_slat_angle()`](custom_components/smart_venetian_blinds/sun/math.py) function — they always reflect the real code, never a simulation.
+
+**South-facing facade (winter day)** — baseline tracking behaviour.
+The cover drives down and tilts to block the sun; slats open slightly at noon when the sun is steepest.
+Blue = tilt %, green = cover position % (right axis):
+
+![Vanilla behaviour](docs/images/vanilla.svg)
+
+**East-facing facade (spring day)** — cover tracks the morning sun, then raises when the sun moves behind the facade at midday:
+
+![East facade](docs/images/east.svg)
+
+**Obstacle elevation** — a nearby building blocks the sun below 10°.
+While the sun is below the threshold the integration treats it as no-sun and raises the cover:
+
+![Obstacle elevation](docs/images/obstacle.svg)
+
+**Sleep / manual-close protection** — when the user closes the slats below the threshold (e.g. overnight or during a siesta) the integration pauses and does not re-open:
+
+![Sleep protection](docs/images/sleep.svg)
+
+**Exit mode (manual-open detection)** — when the user raises the cover above the threshold (e.g. to step outside) the integration pauses until the cover is lowered again:
+
+![Exit mode](docs/images/exit.svg)
+
 ### Data Flow
 
 ```
