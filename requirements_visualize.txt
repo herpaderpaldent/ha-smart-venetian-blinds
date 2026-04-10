@@ -1,0 +1,3 @@
+# Requirements for script/visualize (behavior diagram generator)
+# Install with: pip install -r requirements_visualize.txt
+matplotlib>=3.7

@@ -1,0 +1,48 @@
+name: Update Behavior Diagrams
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  diagrams:
+    name: "Regenerate behavior diagrams"
+    runs-on: "ubuntu-latest"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          # Push back to the tag's commit — need a token with write access
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ github.ref }}
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.13"
+
+      - name: Install visualize dependencies
+        run: pip install -r requirements_visualize.txt
+
+      - name: Generate diagrams
+        run: python3 script/visualize
+
+      - name: Commit updated SVGs
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/images/
+          if git diff --cached --quiet; then
+            echo "No diagram changes — nothing to commit."
+          else
+            git commit -m "chore: regenerate behavior diagrams for ${{ github.ref_name }}
+
+Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
+            # Push to the branch the tag points to (main), not the tag itself
+            git push origin HEAD:main
+          fi
