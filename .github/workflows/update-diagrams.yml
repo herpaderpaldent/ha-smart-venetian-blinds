@@ -40,9 +40,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "No diagram changes — nothing to commit."
           else
-            git commit -m "chore: regenerate behavior diagrams for ${{ github.ref_name }}
-
-Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
-            # Push to the branch the tag points to (main), not the tag itself
+            git commit -m "chore: regenerate behavior diagrams for ${{ github.ref_name }}" \
+              -m "Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
             git push origin HEAD:main
           fi
