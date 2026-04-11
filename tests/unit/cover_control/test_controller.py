@@ -1550,3 +1550,69 @@ class TestObstacleElevation:
         assert result is True
         call_args = mock_hass.services.async_call.call_args
         assert call_args[0][1] == "set_cover_tilt_position"
+
+    @pytest.mark.asyncio
+    async def test_drives_cover_down_when_sun_clears_obstacle(
+        self,
+        mock_hass: MagicMock,
+    ) -> None:
+        """Cover raised by obstacle no-sun is driven back down when sun clears the threshold.
+
+        Regression test: previously the manual-open check would see position=100% and
+        refuse to act, leaving the cover raised even after the sun cleared the obstacle.
+        """
+        mock_hass.services.async_call = AsyncMock()
+        controller = CoverController(mock_hass)
+
+        config = CoverConfig(
+            entity_id="cover.eg",
+            drive_position=0,
+            min_angle=0,
+            max_angle=90,
+            invert_tilt=False,
+            no_sun_behavior="open",
+            no_sun_position=100,
+            respect_manual_close=False,
+            manual_close_threshold=5,
+            respect_manual_open=True,
+            manual_open_threshold=90,
+            minimum_tilt_change=0,
+            enabled=True,
+            reflection_protection_enabled=False,
+            reflection_protection_min_tilt=50,
+            reflection_protection_start_time="09:00",
+            reflection_protection_end_time="17:00",
+            obstacle_elevation_deg=10.0,
+        )
+
+        # Cycle 1: sun at 8 degrees — below obstacle threshold, cover driven to raised position
+        mock_hass.states.get.return_value = create_mock_state(
+            state="open",
+            attributes={"current_position": 0, "current_tilt_position": 50},
+        )
+        below_obstacle = SlatCalculationResult(
+            slat_angle_deg=45.0, slat_tilt_percent=50.0,
+            profile_angle_deg=30.0, horizontal_shadow_angle_deg=0.0,
+            sun_is_behind_facade=False, sun_elevation_deg=8.0,
+        )
+        await controller.apply_calculation(config, below_obstacle)
+        assert "cover.eg" in controller._obstacle_was_blocking
+
+        # Cycle 2: sun at 15 degrees — above obstacle threshold, cover still at 100%
+        mock_hass.states.get.return_value = create_mock_state(
+            state="open",
+            attributes={"current_position": 100, "current_tilt_position": 100},
+        )
+        above_obstacle = SlatCalculationResult(
+            slat_angle_deg=45.0, slat_tilt_percent=50.0,
+            profile_angle_deg=30.0, horizontal_shadow_angle_deg=0.0,
+            sun_is_behind_facade=False, sun_elevation_deg=15.0,
+        )
+        result = await controller.apply_calculation(config, above_obstacle)
+
+        # Should drive cover down (bypassing manual-open) and apply tilt
+        assert result is True
+        assert "cover.eg" not in controller._obstacle_was_blocking
+        calls = mock_hass.services.async_call.call_args_list
+        service_names = [c[0][1] for c in calls]
+        assert "set_cover_position" in service_names
