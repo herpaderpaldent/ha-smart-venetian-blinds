@@ -1591,9 +1591,12 @@ class TestObstacleElevation:
             attributes={"current_position": 0, "current_tilt_position": 50},
         )
         below_obstacle = SlatCalculationResult(
-            slat_angle_deg=45.0, slat_tilt_percent=50.0,
-            profile_angle_deg=30.0, horizontal_shadow_angle_deg=0.0,
-            sun_is_behind_facade=False, sun_elevation_deg=8.0,
+            slat_angle_deg=45.0,
+            slat_tilt_percent=50.0,
+            profile_angle_deg=30.0,
+            horizontal_shadow_angle_deg=0.0,
+            sun_is_behind_facade=False,
+            sun_elevation_deg=8.0,
         )
         await controller.apply_calculation(config, below_obstacle)
         assert "cover.eg" in controller._obstacle_was_blocking
@@ -1604,9 +1607,12 @@ class TestObstacleElevation:
             attributes={"current_position": 100, "current_tilt_position": 100},
         )
         above_obstacle = SlatCalculationResult(
-            slat_angle_deg=45.0, slat_tilt_percent=50.0,
-            profile_angle_deg=30.0, horizontal_shadow_angle_deg=0.0,
-            sun_is_behind_facade=False, sun_elevation_deg=15.0,
+            slat_angle_deg=45.0,
+            slat_tilt_percent=50.0,
+            profile_angle_deg=30.0,
+            horizontal_shadow_angle_deg=0.0,
+            sun_is_behind_facade=False,
+            sun_elevation_deg=15.0,
         )
         result = await controller.apply_calculation(config, above_obstacle)
 
