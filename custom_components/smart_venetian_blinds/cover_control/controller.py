@@ -140,6 +140,7 @@ class CoverController:
         sun_has_hit_facade: bool = False,
         first_facade_hit_this_cycle: bool = False,
         position_timeout_sec: int = DEFAULT_POSITION_TIMEOUT,
+        obstacle_was_blocking: set[str] | None = None,
     ) -> None:
         """Initialize the cover controller."""
         self._hass = hass
@@ -149,7 +150,8 @@ class CoverController:
         # Tracks which covers were in obstacle-blocked (no-sun) state last cycle.
         # Used to bypass the manual-open check on the first tracking cycle after
         # the sun clears the obstacle threshold, so the cover is driven back down.
-        self._obstacle_was_blocking: set[str] = set()
+        # Shared with GroupState so it persists across controller instances.
+        self._obstacle_was_blocking: set[str] = obstacle_was_blocking if obstacle_was_blocking is not None else set()
 
     async def apply_calculation(
         self,
@@ -252,11 +254,20 @@ class CoverController:
             await self._set_cover_position(config.entity_id, config.drive_position)
             await self._wait_for_position(config.entity_id, config.drive_position)
 
-        # Calculate target tilt
-        tilt_percent = apply_tilt_inversion(
-            calculation.slat_tilt_percent,
-            config.invert_tilt,
-        )
+        # Calculate target tilt — apply per-cover angle bounds before inversion.
+        # The coordinator computes one shared result using group geometry defaults (min=0°,
+        # max=90°); per-cover min_angle/max_angle constraints are enforced here.
+        #
+        # Semantic mapping (standard tilt space, before inversion):
+        #   max_angle_deg → floor on tilt: cover cannot close past max_angle
+        #   min_angle_deg → ceiling on tilt: cover cannot be more open than min_angle
+        tilt_percent = calculation.slat_tilt_percent
+        if config.max_angle < 90:
+            tilt_percent = max(tilt_percent, 100.0 * (1.0 - config.max_angle / 90.0))
+        if config.min_angle > 0:
+            tilt_percent = min(tilt_percent, 100.0 * (1.0 - config.min_angle / 90.0))
+
+        tilt_percent = apply_tilt_inversion(tilt_percent, config.invert_tilt)
         # Never set below our own threshold — preserves the manual-close invariant
         tilt_percent = max(tilt_percent, self._effective_min_tilt(config))
 
@@ -285,9 +296,14 @@ class CoverController:
         return True
 
     def _effective_min_tilt(self, config: CoverConfig) -> float:
-        """Minimum tilt the integration may set (preserves manual-close invariant)."""
+        """Minimum tilt the integration may set (preserves manual-close invariant).
+
+        Includes the max_angle_deg floor so the no-sun/obstacle path also respects
+        the configured maximum closure angle.
+        """
         base = float(config.manual_close_threshold) if config.respect_manual_close else 0.0
-        return max(base, float(config.min_tilt_percent))
+        angle_floor = 100.0 * (1.0 - config.max_angle / 90.0) if config.max_angle < 90 else 0.0
+        return max(base, float(config.min_tilt_percent), angle_floor)
 
     def _is_reflection_protection_active(self, config: CoverConfig) -> bool:
         """

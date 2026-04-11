@@ -115,6 +115,7 @@ async def async_setup_entry(
             sun_has_hit_facade=state.sun_has_hit_facade,
             first_facade_hit_this_cycle=state.is_first_facade_hit,
             position_timeout_sec=entry.options.get(CONF_POSITION_TIMEOUT, DEFAULT_POSITION_TIMEOUT),
+            obstacle_was_blocking=state.obstacle_was_blocking,
         )
         results = await controller.apply_to_all_covers(
             entry.subentries,
