@@ -146,6 +146,10 @@ class CoverController:
         self._sun_has_hit_facade = sun_has_hit_facade
         self._first_facade_hit_this_cycle = first_facade_hit_this_cycle
         self._position_timeout_sec = position_timeout_sec
+        # Tracks which covers were in obstacle-blocked (no-sun) state last cycle.
+        # Used to bypass the manual-open check on the first tracking cycle after
+        # the sun clears the obstacle threshold, so the cover is driven back down.
+        self._obstacle_was_blocking: set[str] = set()
 
     async def apply_calculation(
         self,
@@ -184,7 +188,14 @@ class CoverController:
                 calculation.sun_elevation_deg,
                 config.obstacle_elevation_deg,
             )
+            self._obstacle_was_blocking.add(config.entity_id)
             return await self._handle_no_sun(config)
+
+        # Sun is now above the obstacle threshold — check if we just transitioned out.
+        # If so, bypass the manual-open check this cycle so the cover is driven back down
+        # (same logic as _first_facade_hit_this_cycle for the sunrise case).
+        obstacle_just_cleared = config.entity_id in self._obstacle_was_blocking
+        self._obstacle_was_blocking.discard(config.entity_id)
 
         # Get current cover position
         current_position = self._get_cover_position(config.entity_id)
@@ -212,12 +223,14 @@ class CoverController:
         # Check manual open threshold (based on POSITION, not tilt).
         # If the cover was raised above the threshold by the user (e.g. to step out through
         # a patio door), skip auto-control until the cover is lowered again.
-        # Exception: on the very first facade hit of the solar day (is_first_facade_hit=True),
-        # skip this check so that covers raised overnight by no_sun_behavior="open" are driven
-        # back to their working position at sunrise.
+        # Exceptions (bypass this check):
+        # - _first_facade_hit_this_cycle: covers raised overnight by no_sun_behavior="open"
+        # - obstacle_just_cleared: cover was raised by obstacle no-sun behaviour and sun
+        #   just crossed the obstacle threshold — must drive it back down automatically.
         if (
             config.respect_manual_open
             and not self._first_facade_hit_this_cycle
+            and not obstacle_just_cleared
             and current_position >= config.manual_open_threshold
         ):
             LOGGER.debug(
