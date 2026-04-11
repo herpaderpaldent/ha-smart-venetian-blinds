@@ -1,13 +1,16 @@
 name: Update Behavior Diagrams
 
 on:
-  push:
-    tags:
-      - "[0-9]+.[0-9]+.[0-9]+"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "custom_components/smart_venetian_blinds/**"
+      - "script/visualize"
+      - "requirements_visualize.txt"
 
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
   diagrams:
@@ -18,9 +21,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          # Push back to the tag's commit — need a token with write access
           token: ${{ secrets.GITHUB_TOKEN }}
-          ref: ${{ github.ref }}
+          ref: ${{ github.head_ref }}
 
       - name: Set up Python
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
@@ -33,7 +35,7 @@ jobs:
       - name: Generate diagrams
         run: python3 script/visualize
 
-      - name: Commit and open auto-merge PR
+      - name: Commit updated diagrams to PR branch
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -41,17 +43,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "No diagram changes — nothing to commit."
           else
-            BRANCH="chore/update-diagrams-${{ github.ref_name }}"
-            git checkout -b "$BRANCH"
-            git commit -m "chore: regenerate behavior diagrams for ${{ github.ref_name }}" \
+            git commit -m "chore: regenerate behavior diagrams" \
               -m "Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
-            git push --force origin "$BRANCH"
-            gh pr create \
-              --title "chore: regenerate behavior diagrams for ${{ github.ref_name }}" \
-              --body "Auto-generated diagram updates for tag \`${{ github.ref_name }}\`. Merges automatically once CI passes." \
-              --base main \
-              --head "$BRANCH" || true
-            gh pr merge --auto --squash "$BRANCH"
+            git push origin HEAD:${{ github.head_ref }}
           fi
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
