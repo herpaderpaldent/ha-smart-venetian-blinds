@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   diagrams:
@@ -32,7 +33,7 @@ jobs:
       - name: Generate diagrams
         run: python3 script/visualize
 
-      - name: Commit updated SVGs
+      - name: Commit and open auto-merge PR
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -40,7 +41,17 @@ jobs:
           if git diff --cached --quiet; then
             echo "No diagram changes — nothing to commit."
           else
+            BRANCH="chore/update-diagrams-${{ github.ref_name }}"
+            git checkout -b "$BRANCH"
             git commit -m "chore: regenerate behavior diagrams for ${{ github.ref_name }}" \
               -m "Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
-            git push origin HEAD:main
+            git push origin "$BRANCH"
+            gh pr create \
+              --title "chore: regenerate behavior diagrams for ${{ github.ref_name }}" \
+              --body "Auto-generated diagram updates for tag \`${{ github.ref_name }}\`. Merges automatically once CI passes." \
+              --base main \
+              --head "$BRANCH"
+            gh pr merge --auto --squash
           fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
