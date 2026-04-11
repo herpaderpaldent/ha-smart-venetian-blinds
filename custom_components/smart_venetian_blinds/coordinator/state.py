@@ -50,6 +50,10 @@ class GroupState:
     # this no-sun period. Resets when the sun starts hitting the facade again.
     no_sun_action_applied: bool = False
 
+    # Tracks which cover entity IDs were in obstacle-blocked state last cycle.
+    # Shared with CoverController so obstacle_just_cleared works across controller instances.
+    obstacle_was_blocking: set[str] = field(default_factory=set)
+
     # Cover states for manual close detection (entity_id -> last known position)
     cover_positions: dict[str, float] = field(default_factory=dict)
 
@@ -102,5 +106,6 @@ class GroupState:
         self.sun_has_hit_facade = False
         self.is_first_facade_hit = False
         self.no_sun_action_applied = False
+        self.obstacle_was_blocking.clear()
         self.last_applied_angle = None
         self.last_applied_time = None
