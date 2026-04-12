@@ -1,7 +1,7 @@
 name: Update Behavior Diagrams
 
 on:
-  pull_request:
+  push:
     branches:
       - main
     paths:
@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   diagrams:
@@ -20,9 +21,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          ref: ${{ github.head_ref }}
 
       - name: Set up Python
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
@@ -35,15 +33,25 @@ jobs:
       - name: Generate diagrams
         run: python3 script/visualize
 
-      - name: Commit updated diagrams to PR branch
+      - name: Open PR with updated diagrams
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add docs/images/
           if git diff --cached --quiet; then
             echo "No diagram changes — nothing to commit."
-          else
-            git commit -m "chore: regenerate behavior diagrams" \
-              -m "Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
-            git push origin HEAD:${{ github.head_ref }}
+            exit 0
           fi
+          BRANCH="chore/update-diagrams-${GITHUB_SHA::8}"
+          git checkout -b "$BRANCH"
+          git commit -m "chore: regenerate behavior diagrams"
+          git push origin "$BRANCH"
+          gh pr create \
+            --base main \
+            --head "$BRANCH" \
+            --title "chore: regenerate behavior diagrams" \
+            --body "Automated diagram update after changes to \`main\`. Auto-merges when CI passes." \
+            --label "chore" || true
+          gh pr merge "$BRANCH" --squash --auto --delete-branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
