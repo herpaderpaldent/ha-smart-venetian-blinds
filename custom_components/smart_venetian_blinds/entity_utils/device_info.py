@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from homeassistant.helpers.device_registry import DeviceInfo
 
@@ -45,47 +45,3 @@ def create_device_info(
         model=model or "Unknown",
         sw_version=sw_version,
     )
-
-
-def update_device_info(
-    base_info: DeviceInfo,
-    **kwargs: Any,
-) -> DeviceInfo:
-    """
-    Update a DeviceInfo object with new information.
-
-    Args:
-        base_info: The base DeviceInfo to update
-        **kwargs: Key-value pairs to update in the DeviceInfo
-
-    Returns:
-        An updated DeviceInfo object
-
-    Example:
-        >>> updated_info = update_device_info(
-        ...     base_info,
-        ...     model="New Model",
-        ...     sw_version="2.0.0",
-        ... )
-    """
-    # Create a new DeviceInfo with updated values
-    updated = dict(base_info)
-    updated.update(kwargs)
-    return DeviceInfo(**updated)  # type: ignore[arg-type]
-
-
-def get_device_identifiers(config_entry: ConfigEntry) -> set[tuple[str, str]]:
-    """
-    Get device identifiers for a config entry.
-
-    Args:
-        config_entry: The config entry
-
-    Returns:
-        A set of device identifier tuples
-
-    Example:
-        >>> identifiers = get_device_identifiers(config_entry)
-        >>> # Returns: {('smart_venetian_blinds', 'entry_id_value')}
-    """
-    return {(config_entry.domain, config_entry.entry_id)}
