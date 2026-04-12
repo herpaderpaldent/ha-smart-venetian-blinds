@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from freezegun import freeze_time
 import pytest
@@ -65,12 +65,12 @@ class TestShouldApply:
         )
         assert result is True
 
-    @freeze_time("2024-01-15 12:00:00")
+    @freeze_time("2024-01-15 12:00:00+00:00")
     def test_blocks_within_min_interval(self) -> None:
         """Blocks updates within min_interval."""
         state = GroupState()
         state.last_applied_angle = 45.0
-        state.last_applied_time = datetime(2024, 1, 15, 11, 59, 30)  # 30 sec ago
+        state.last_applied_time = datetime(2024, 1, 15, 11, 59, 30, tzinfo=UTC)  # 30 sec ago
 
         result = state.should_apply(
             new_angle=60.0,  # Big change
@@ -79,12 +79,12 @@ class TestShouldApply:
         )
         assert result is False
 
-    @freeze_time("2024-01-15 12:00:00")
+    @freeze_time("2024-01-15 12:00:00+00:00")
     def test_allows_after_min_interval(self) -> None:
         """Allows updates after min_interval elapsed."""
         state = GroupState()
         state.last_applied_angle = 45.0
-        state.last_applied_time = datetime(2024, 1, 15, 11, 58, 59)  # 61 sec ago
+        state.last_applied_time = datetime(2024, 1, 15, 11, 58, 59, tzinfo=UTC)  # 61 sec ago
 
         result = state.should_apply(
             new_angle=60.0,  # Big change
@@ -93,12 +93,12 @@ class TestShouldApply:
         )
         assert result is True
 
-    @freeze_time("2024-01-15 12:00:00")
+    @freeze_time("2024-01-15 12:00:00+00:00")
     def test_blocks_below_threshold(self) -> None:
         """Blocks updates below threshold even after interval."""
         state = GroupState()
         state.last_applied_angle = 45.0
-        state.last_applied_time = datetime(2024, 1, 15, 11, 58, 0)  # 2 min ago
+        state.last_applied_time = datetime(2024, 1, 15, 11, 58, 0, tzinfo=UTC)  # 2 min ago
 
         result = state.should_apply(
             new_angle=47.0,  # Only 2 deg change
@@ -107,12 +107,12 @@ class TestShouldApply:
         )
         assert result is False
 
-    @freeze_time("2024-01-15 12:00:00")
+    @freeze_time("2024-01-15 12:00:00+00:00")
     def test_allows_at_threshold(self) -> None:
         """Allows updates exactly at threshold."""
         state = GroupState()
         state.last_applied_angle = 45.0
-        state.last_applied_time = datetime(2024, 1, 15, 11, 58, 0)  # 2 min ago
+        state.last_applied_time = datetime(2024, 1, 15, 11, 58, 0, tzinfo=UTC)  # 2 min ago
 
         result = state.should_apply(
             new_angle=50.0,  # Exactly 5 deg change
@@ -121,12 +121,12 @@ class TestShouldApply:
         )
         assert result is True
 
-    @freeze_time("2024-01-15 12:00:00")
+    @freeze_time("2024-01-15 12:00:00+00:00")
     def test_allows_above_threshold(self) -> None:
         """Allows updates above threshold."""
         state = GroupState()
         state.last_applied_angle = 45.0
-        state.last_applied_time = datetime(2024, 1, 15, 11, 58, 0)  # 2 min ago
+        state.last_applied_time = datetime(2024, 1, 15, 11, 58, 0, tzinfo=UTC)  # 2 min ago
 
         result = state.should_apply(
             new_angle=55.0,  # 10 deg change
@@ -135,12 +135,12 @@ class TestShouldApply:
         )
         assert result is True
 
-    @freeze_time("2024-01-15 12:00:00")
+    @freeze_time("2024-01-15 12:00:00+00:00")
     def test_negative_angle_change(self) -> None:
         """Handles negative angle changes correctly."""
         state = GroupState()
         state.last_applied_angle = 45.0
-        state.last_applied_time = datetime(2024, 1, 15, 11, 58, 0)  # 2 min ago
+        state.last_applied_time = datetime(2024, 1, 15, 11, 58, 0, tzinfo=UTC)  # 2 min ago
 
         result = state.should_apply(
             new_angle=35.0,  # -10 deg change (absolute: 10)
@@ -149,12 +149,12 @@ class TestShouldApply:
         )
         assert result is True
 
-    @freeze_time("2024-01-15 12:00:00")
+    @freeze_time("2024-01-15 12:00:00+00:00")
     def test_exactly_at_interval_boundary(self) -> None:
         """Tests behavior exactly at min_interval boundary."""
         state = GroupState()
         state.last_applied_angle = 45.0
-        state.last_applied_time = datetime(2024, 1, 15, 11, 59, 0)  # Exactly 60 sec ago
+        state.last_applied_time = datetime(2024, 1, 15, 11, 59, 0, tzinfo=UTC)  # Exactly 60 sec ago
 
         result = state.should_apply(
             new_angle=60.0,  # Big change
@@ -164,12 +164,12 @@ class TestShouldApply:
         # 60 sec elapsed is NOT < 60, so it passes interval check
         assert result is True
 
-    @freeze_time("2024-01-15 12:00:00")
+    @freeze_time("2024-01-15 12:00:00+00:00")
     def test_zero_threshold(self) -> None:
         """Zero threshold allows any change."""
         state = GroupState()
         state.last_applied_angle = 45.0
-        state.last_applied_time = datetime(2024, 1, 15, 11, 58, 0)  # 2 min ago
+        state.last_applied_time = datetime(2024, 1, 15, 11, 58, 0, tzinfo=UTC)  # 2 min ago
 
         result = state.should_apply(
             new_angle=45.1,  # Tiny change
@@ -178,12 +178,12 @@ class TestShouldApply:
         )
         assert result is True
 
-    @freeze_time("2024-01-15 12:00:00")
+    @freeze_time("2024-01-15 12:00:00+00:00")
     def test_zero_interval(self) -> None:
         """Zero interval allows immediate updates."""
         state = GroupState()
         state.last_applied_angle = 45.0
-        state.last_applied_time = datetime(2024, 1, 15, 11, 59, 59)  # 1 sec ago
+        state.last_applied_time = datetime(2024, 1, 15, 11, 59, 59, tzinfo=UTC)  # 1 sec ago
 
         result = state.should_apply(
             new_angle=60.0,  # Big change
@@ -197,31 +197,31 @@ class TestShouldApply:
 class TestMarkApplied:
     """Tests for GroupState.mark_applied method."""
 
-    @freeze_time("2024-01-15 12:00:00")
+    @freeze_time("2024-01-15 12:00:00+00:00")
     def test_updates_angle(self) -> None:
         """mark_applied updates last_applied_angle."""
         state = GroupState()
         state.mark_applied(45.0)
         assert state.last_applied_angle == 45.0
 
-    @freeze_time("2024-01-15 12:00:00")
+    @freeze_time("2024-01-15 12:00:00+00:00")
     def test_updates_time(self) -> None:
         """mark_applied updates last_applied_time to now."""
         state = GroupState()
         state.mark_applied(45.0)
-        assert state.last_applied_time == datetime(2024, 1, 15, 12, 0, 0)
+        assert state.last_applied_time == datetime(2024, 1, 15, 12, 0, 0, tzinfo=UTC)
 
-    @freeze_time("2024-01-15 12:00:00")
+    @freeze_time("2024-01-15 12:00:00+00:00")
     def test_overwrites_previous_values(self) -> None:
         """mark_applied overwrites previous values."""
         state = GroupState()
         state.last_applied_angle = 30.0
-        state.last_applied_time = datetime(2024, 1, 15, 11, 0, 0)
+        state.last_applied_time = datetime(2024, 1, 15, 11, 0, 0, tzinfo=UTC)
 
         state.mark_applied(60.0)
 
         assert state.last_applied_angle == 60.0
-        assert state.last_applied_time == datetime(2024, 1, 15, 12, 0, 0)
+        assert state.last_applied_time == datetime(2024, 1, 15, 12, 0, 0, tzinfo=UTC)
 
 
 @pytest.mark.unit
@@ -232,7 +232,7 @@ class TestResetThrottle:
         """reset_throttle clears time but keeps angle."""
         state = GroupState()
         state.last_applied_angle = 45.0
-        state.last_applied_time = datetime(2024, 1, 15, 12, 0, 0)
+        state.last_applied_time = datetime(2024, 1, 15, 12, 0, 0, tzinfo=UTC)
 
         state.reset_throttle()
 
@@ -272,7 +272,7 @@ class TestResetForFreshStart:
         """reset_for_fresh_start clears both last_applied_angle and last_applied_time."""
         state = GroupState()
         state.last_applied_angle = 45.0
-        state.last_applied_time = datetime(2024, 1, 15, 12, 0, 0)
+        state.last_applied_time = datetime(2024, 1, 15, 12, 0, 0, tzinfo=UTC)
 
         state.reset_for_fresh_start()
 

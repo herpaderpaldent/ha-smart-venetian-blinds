@@ -10,6 +10,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import TYPE_CHECKING
 
+import homeassistant.util.dt as dt_util
+
 if TYPE_CHECKING:
     from custom_components.smart_venetian_blinds.sun.math import SlatCalculationResult, SunPosition
 
@@ -79,7 +81,7 @@ class GroupState:
             return True
 
         # Check minimum interval
-        now = datetime.now()
+        now = dt_util.now()
         elapsed = (now - self.last_applied_time).total_seconds()
         if elapsed < min_interval_sec:
             return False
@@ -91,7 +93,7 @@ class GroupState:
     def mark_applied(self, angle: float) -> None:
         """Mark that an angle was applied."""
         self.last_applied_angle = angle
-        self.last_applied_time = datetime.now()
+        self.last_applied_time = dt_util.now()
 
     def reset_throttle(self) -> None:
         """Reset throttle state to allow immediate application."""
