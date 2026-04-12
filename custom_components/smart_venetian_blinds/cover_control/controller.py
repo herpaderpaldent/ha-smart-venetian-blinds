@@ -7,6 +7,7 @@ Implements the drive-then-tilt control logic for venetian blinds.
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
@@ -400,38 +401,46 @@ class CoverController:
             await self._set_cover_tilt(config.entity_id, tilt)
             return True
 
-        behavior = config.no_sun_behavior
+        dispatch: dict[str, Callable[[], Coroutine[None, None, bool]]] = {
+            "keep_last": lambda: self._no_sun_keep_last(config),
+            "open": lambda: self._no_sun_open(config),
+            "close": lambda: self._no_sun_close(config),
+            "set_to_percent": lambda: self._no_sun_set_to_percent(config),
+        }
 
-        if behavior == "keep_last":
-            LOGGER.debug("No sun, keeping last position for %s", config.entity_id)
+        handler = dispatch.get(config.no_sun_behavior)
+        if handler is None:
+            LOGGER.warning("Unknown no_sun_behavior: %s", config.no_sun_behavior)
             return False
+        return await handler()
 
-        if behavior == "open":
-            current_position = self._get_cover_position(config.entity_id)
-            if current_position is not None and abs(current_position - 100) > self.POSITION_TOLERANCE_PERCENT:
-                LOGGER.debug("No sun, raising %s to 100%%", config.entity_id)
-                await self._set_cover_position(config.entity_id, 100)
-                await self._wait_for_position(config.entity_id, 100)
-            return True
-
-        if behavior == "close":
-            tilt = max(0.0, self._effective_min_tilt(config))
-            LOGGER.debug("No sun, closing %s", config.entity_id)
-            await self._set_cover_tilt(config.entity_id, tilt)
-            return True
-
-        if behavior == "set_to_percent":
-            tilt = max(float(config.no_sun_position), self._effective_min_tilt(config))
-            LOGGER.debug(
-                "No sun, setting %s to %d%%",
-                config.entity_id,
-                config.no_sun_position,
-            )
-            await self._set_cover_tilt(config.entity_id, tilt)
-            return True
-
-        LOGGER.warning("Unknown no_sun_behavior: %s", behavior)
+    async def _no_sun_keep_last(self, config: CoverConfig) -> bool:
+        """No-sun behavior: keep current position unchanged."""
+        LOGGER.debug("No sun, keeping last position for %s", config.entity_id)
         return False
+
+    async def _no_sun_open(self, config: CoverConfig) -> bool:
+        """No-sun behavior: raise cover to fully open position."""
+        current_position = self._get_cover_position(config.entity_id)
+        if current_position is not None and abs(current_position - 100) > self.POSITION_TOLERANCE_PERCENT:
+            LOGGER.debug("No sun, raising %s to 100%%", config.entity_id)
+            await self._set_cover_position(config.entity_id, 100)
+            await self._wait_for_position(config.entity_id, 100)
+        return True
+
+    async def _no_sun_close(self, config: CoverConfig) -> bool:
+        """No-sun behavior: close slats to effective minimum tilt."""
+        tilt = max(0.0, self._effective_min_tilt(config))
+        LOGGER.debug("No sun, closing %s", config.entity_id)
+        await self._set_cover_tilt(config.entity_id, tilt)
+        return True
+
+    async def _no_sun_set_to_percent(self, config: CoverConfig) -> bool:
+        """No-sun behavior: set tilt to configured no_sun_position."""
+        tilt = max(float(config.no_sun_position), self._effective_min_tilt(config))
+        LOGGER.debug("No sun, setting %s to %d%%", config.entity_id, config.no_sun_position)
+        await self._set_cover_tilt(config.entity_id, tilt)
+        return True
 
     def _get_cover_position(self, entity_id: str) -> int | None:
         """
