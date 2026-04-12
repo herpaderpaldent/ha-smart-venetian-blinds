@@ -9,12 +9,12 @@ Provides sensors for:
 
 from __future__ import annotations
 
-from custom_components.smart_venetian_blinds.const import ATTRIBUTION, DOMAIN
+from custom_components.smart_venetian_blinds.const import ATTRIBUTION
 from custom_components.smart_venetian_blinds.coordinator import SmartVenetianBlindsDataUpdateCoordinator
+from custom_components.smart_venetian_blinds.entity_utils import create_window_group_device_info
 from custom_components.smart_venetian_blinds.utils.string_helpers import slugify_name
 from homeassistant.components.sensor import SensorEntity, SensorEntityDescription, SensorStateClass
 from homeassistant.const import DEGREE, PERCENTAGE
-from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 SLAT_ANGLE_DESCRIPTION = SensorEntityDescription(
@@ -58,13 +58,7 @@ class SlatAngleSensor(CoordinatorEntity[SmartVenetianBlindsDataUpdateCoordinator
         super().__init__(coordinator)
         self._attr_unique_id = f"{coordinator.config_entry.entry_id}_slat_angle"
         self.entity_id = f"sensor.{slugify_name(coordinator.config_entry.title)}_slat_angle"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, coordinator.config_entry.entry_id)},
-            name=coordinator.config_entry.title,
-            manufacturer="Smart Venetian Blinds",
-            model="Window Group",
-            entry_type=DeviceEntryType.SERVICE,
-        )
+        self._attr_device_info = create_window_group_device_info(coordinator.config_entry)
 
     @property
     def native_value(self) -> float | None:
@@ -89,13 +83,7 @@ class SlatTiltSensor(CoordinatorEntity[SmartVenetianBlindsDataUpdateCoordinator]
         super().__init__(coordinator)
         self._attr_unique_id = f"{coordinator.config_entry.entry_id}_slat_tilt"
         self.entity_id = f"sensor.{slugify_name(coordinator.config_entry.title)}_slat_tilt"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, coordinator.config_entry.entry_id)},
-            name=coordinator.config_entry.title,
-            manufacturer="Smart Venetian Blinds",
-            model="Window Group",
-            entry_type=DeviceEntryType.SERVICE,
-        )
+        self._attr_device_info = create_window_group_device_info(coordinator.config_entry)
 
     @property
     def native_value(self) -> float | None:
@@ -120,13 +108,7 @@ class ProfileAngleSensor(CoordinatorEntity[SmartVenetianBlindsDataUpdateCoordina
         super().__init__(coordinator)
         self._attr_unique_id = f"{coordinator.config_entry.entry_id}_profile_angle"
         self.entity_id = f"sensor.{slugify_name(coordinator.config_entry.title)}_profile_angle"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, coordinator.config_entry.entry_id)},
-            name=coordinator.config_entry.title,
-            manufacturer="Smart Venetian Blinds",
-            model="Window Group",
-            entry_type=DeviceEntryType.SERVICE,
-        )
+        self._attr_device_info = create_window_group_device_info(coordinator.config_entry)
 
     @property
     def native_value(self) -> float | None:

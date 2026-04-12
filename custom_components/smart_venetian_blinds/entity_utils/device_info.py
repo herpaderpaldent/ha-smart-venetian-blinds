@@ -4,44 +4,27 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from homeassistant.helpers.device_registry import DeviceInfo
+from custom_components.smart_venetian_blinds.const import DOMAIN
+from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
 
 
-def create_device_info(
-    config_entry: ConfigEntry,
-    name: str | None = None,
-    manufacturer: str | None = None,
-    model: str | None = None,
-    sw_version: str | None = None,
-) -> DeviceInfo:
+def create_window_group_device_info(config_entry: ConfigEntry) -> DeviceInfo:
     """
-    Create a DeviceInfo object for an entity.
+    Create a DeviceInfo object for a window group entity.
 
     Args:
-        config_entry: The config entry for the integration
-        name: Optional device name
-        manufacturer: Optional manufacturer name
-        model: Optional model name
-        sw_version: Optional software version
+        config_entry: The config entry representing the window group.
 
     Returns:
-        A DeviceInfo object with the specified information
-
-    Example:
-        >>> device_info = create_device_info(
-        ...     config_entry,
-        ...     name="My Device",
-        ...     manufacturer="Example Corp",
-        ...     model="Model X",
-        ... )
+        A DeviceInfo object identifying the window group device.
     """
     return DeviceInfo(
-        identifiers={(config_entry.domain, config_entry.entry_id)},
-        name=name or "Smart Venetian Blinds",
-        manufacturer=manufacturer or "Smart Venetian Blinds",
-        model=model or "Unknown",
-        sw_version=sw_version,
+        identifiers={(DOMAIN, config_entry.entry_id)},
+        name=config_entry.title,
+        manufacturer="Smart Venetian Blinds",
+        model="Window Group",
+        entry_type=DeviceEntryType.SERVICE,
     )
