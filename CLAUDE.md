@@ -61,10 +61,7 @@ custom_components/smart_venetian_blinds/
 ├── repairs.py               # Repair flows for fixing issues
 ├── coordinator/             # DataUpdateCoordinator for slat calculations
 │   ├── base.py              # Main coordinator class
-│   ├── state.py             # GroupState (throttling, auto_control, no-sun tracking)
-│   ├── data_processing.py   # Data validation and transformation
-│   ├── error_handling.py    # Error recovery and retry logic
-│   └── listeners.py         # Entity callbacks and event listeners
+│   └── state.py             # GroupState (throttling, auto_control, no-sun tracking)
 ├── sun/                     # Sun position handling
 │   ├── provider.py          # SunDataProvider (reads sun.sun or sensors)
 │   ├── listener.py          # SunStateListener (debounced state tracking)
@@ -76,13 +73,13 @@ custom_components/smart_venetian_blinds/
 │   ├── options_flow.py      # Options flow
 │   ├── subentry_flow.py     # Cover subentry flow
 │   ├── schemas/             # Form schemas (group, cover_subentry, options)
-│   └── validators/          # Input sanitizers
+│   └── validators/          # Input validation (__init__.py only)
 ├── entity/                  # Base entity class
-├── entity_utils/            # Device info and state helpers
+├── entity_utils/            # Device info helpers (create_window_group_device_info)
 ├── sensor/                  # Sensor platform (slat angle, sun position)
 ├── switch/                  # Switch platform (auto_control toggle)
 ├── service_actions/         # Service implementations (apply_now)
-└── utils/                   # String helpers and validators
+└── utils/                   # String helpers (slugify_name, truncate_string)
 ```
 
 ### Key Concepts
