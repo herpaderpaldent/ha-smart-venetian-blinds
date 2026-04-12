@@ -17,10 +17,7 @@ custom_components/smart_venetian_blinds/
 ├── coordinator/             # Data update coordinator package
 │   ├── __init__.py          # Exports SmartVenetianBlindsDataUpdateCoordinator
 │   ├── base.py              # Main coordinator class
-│   ├── state.py             # GroupState (throttling, auto_control, no-sun tracking)
-│   ├── data_processing.py   # Data validation and transformation
-│   ├── error_handling.py    # Error recovery and retry logic
-│   └── listeners.py         # Entity callbacks and event listeners
+│   └── state.py             # GroupState (throttling, auto_control, no-sun tracking)
 ├── sun/                     # Sun position handling
 │   ├── __init__.py
 │   ├── provider.py          # SunDataProvider (reads sun.sun or solar sensors)
@@ -41,15 +38,13 @@ custom_components/smart_venetian_blinds/
 │   │   ├── cover_subentry.py # Cover subentry schemas
 │   │   └── options.py       # Options flow schemas
 │   └── validators/          # Input validation
-│       ├── __init__.py
-│       └── sanitizers.py    # Input sanitizers
+│       └── __init__.py
 ├── entity/                  # Base entity package
 │   ├── __init__.py          # Exports SmartVenetianBlindsEntity
 │   └── base.py              # Base entity class implementation
 ├── entity_utils/            # Entity helper utilities
 │   ├── __init__.py
-│   ├── device_info.py       # Device information helpers
-│   └── state_helpers.py     # State management utilities
+│   └── device_info.py       # Device information helpers (create_window_group_device_info)
 ├── sensor/                  # Sensor platform (slat angle, sun position)
 │   ├── __init__.py          # Platform setup
 │   └── slat_sensors.py      # Slat angle and sun position sensor entities
@@ -61,8 +56,7 @@ custom_components/smart_venetian_blinds/
 │   └── apply_now.py         # Force-apply current calculation to covers
 ├── utils/                   # General utilities
 │   ├── __init__.py
-│   ├── string_helpers.py    # String manipulation helpers
-│   └── validators.py        # General validation utilities
+│   └── string_helpers.py    # String manipulation helpers (slugify_name, truncate_string)
 └── translations/            # Localization files
     ├── en.json              # English translations
     └── de.json              # German translations
@@ -92,9 +86,6 @@ The coordinator receives sun position updates from the listener and computes opt
 
 - `base.py` - Main coordinator class (`SmartVenetianBlindsDataUpdateCoordinator`)
 - `state.py` - `GroupState` dataclass: holds calculation results, throttling state, auto-control flag, and no-sun tracking
-- `data_processing.py` - Data validation and transformation
-- `error_handling.py` - Error recovery and retry logic
-- `listeners.py` - Entity callbacks and event listeners
 
 **Core functionality:**
 
@@ -129,7 +120,7 @@ Implements the configuration UI for adding and configuring window groups and cov
 - `options_flow.py`: Options flow for post-setup configuration
 - `subentry_flow.py`: Cover subentry flow for adding individual covers to a group
 - `schemas/`: Voluptuous schemas for group, cover, and options forms
-- `validators/`: Input sanitization logic
+- `validators/`: Input validation (`__init__.py` only)
 
 **Key classes:**
 
