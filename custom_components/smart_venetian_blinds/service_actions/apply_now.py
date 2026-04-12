@@ -10,7 +10,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from custom_components.smart_venetian_blinds.const import DOMAIN, LOGGER
-from custom_components.smart_venetian_blinds.cover_control import CoverController
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant, ServiceCall
@@ -27,6 +26,8 @@ async def async_handle_apply_now(hass: HomeAssistant, call: ServiceCall) -> None
         hass: The Home Assistant instance.
         call: The service call data.
     """
+    from custom_components.smart_venetian_blinds import _create_controller  # noqa: PLC0415
+
     entries = hass.config_entries.async_entries(DOMAIN)
     if not entries:
         LOGGER.warning("No config entries found for %s", DOMAIN)
@@ -55,10 +56,7 @@ async def async_handle_apply_now(hass: HomeAssistant, call: ServiceCall) -> None
         # Get the new calculation result
         calculation = coordinator.data
 
-        controller = CoverController(
-            hass,
-            sun_has_hit_facade=state.sun_has_hit_facade,
-        )
+        controller = _create_controller(hass, entry)
         results = await controller.apply_to_all_covers(
             entry.subentries,
             calculation,
