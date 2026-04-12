@@ -223,18 +223,7 @@ class CoverController:
                 return False
 
         # Check manual open threshold (based on POSITION, not tilt).
-        # If the cover was raised above the threshold by the user (e.g. to step out through
-        # a patio door), skip auto-control until the cover is lowered again.
-        # Exceptions (bypass this check):
-        # - _first_facade_hit_this_cycle: covers raised overnight by no_sun_behavior="open"
-        # - obstacle_just_cleared: cover was raised by obstacle no-sun behaviour and sun
-        #   just crossed the obstacle threshold — must drive it back down automatically.
-        if (
-            config.respect_manual_open
-            and not self._first_facade_hit_this_cycle
-            and not obstacle_just_cleared
-            and current_position >= config.manual_open_threshold
-        ):
+        if self._should_respect_manual_open(config, current_position, obstacle_just_cleared):
             LOGGER.debug(
                 "Cover %s position at %d%% (at or above threshold %d%%), respecting manual open",
                 config.entity_id,
@@ -255,17 +244,7 @@ class CoverController:
             await self._wait_for_position(config.entity_id, config.drive_position)
 
         # Calculate target tilt — apply per-cover angle bounds before inversion.
-        # The coordinator computes one shared result using group geometry defaults (min=0°,
-        # max=90°); per-cover min_angle/max_angle constraints are enforced here.
-        #
-        # Semantic mapping (standard tilt space, before inversion):
-        #   max_angle_deg → floor on tilt: cover cannot close past max_angle
-        #   min_angle_deg → ceiling on tilt: cover cannot be more open than min_angle
-        tilt_percent = calculation.slat_tilt_percent
-        if config.max_angle < 90:
-            tilt_percent = max(tilt_percent, 100.0 * (1.0 - config.max_angle / 90.0))
-        if config.min_angle > 0:
-            tilt_percent = min(tilt_percent, 100.0 * (1.0 - config.min_angle / 90.0))
+        tilt_percent = self._apply_angle_constraints(calculation.slat_tilt_percent, config)
 
         tilt_percent = apply_tilt_inversion(tilt_percent, config.invert_tilt)
         # Never set below our own threshold — preserves the manual-close invariant
@@ -294,6 +273,55 @@ class CoverController:
 
         await self._set_cover_tilt(config.entity_id, tilt_percent)
         return True
+
+    def _should_respect_manual_open(
+        self,
+        config: CoverConfig,
+        current_position: int,
+        obstacle_just_cleared: bool,
+    ) -> bool:
+        """Return True if manual-open state should prevent auto-control this cycle.
+
+        Manual-open is bypassed on the first facade hit of the day (to bring down
+        covers raised overnight) and when an obstacle just cleared (same logic for
+        the obstacle-open case).
+
+        Args:
+            config: The cover configuration.
+            current_position: Current cover position (0-100).
+            obstacle_just_cleared: True if the obstacle threshold was just crossed upward.
+
+        Returns:
+            True if auto-control should be skipped to respect the user's manual open.
+        """
+        if not config.respect_manual_open:
+            return False
+        if self._first_facade_hit_this_cycle or obstacle_just_cleared:
+            return False
+        return current_position >= config.manual_open_threshold
+
+    def _apply_angle_constraints(self, tilt_percent: float, config: CoverConfig) -> float:
+        """Apply per-cover min/max angle bounds in standard (pre-inversion) tilt space.
+
+        The coordinator computes one shared result using group geometry defaults (min=0°,
+        max=90°); per-cover angle constraints are enforced here before inversion.
+
+        Semantic mapping:
+            max_angle_deg → floor on tilt: cover cannot close past max_angle
+            min_angle_deg → ceiling on tilt: cover cannot be more open than min_angle
+
+        Args:
+            tilt_percent: Raw tilt from the calculation result.
+            config: The cover configuration carrying min_angle/max_angle.
+
+        Returns:
+            Tilt percent clamped to the configured angle bounds.
+        """
+        if config.max_angle < 90:
+            tilt_percent = max(tilt_percent, 100.0 * (1.0 - config.max_angle / 90.0))
+        if config.min_angle > 0:
+            tilt_percent = min(tilt_percent, 100.0 * (1.0 - config.min_angle / 90.0))
+        return tilt_percent
 
     def _effective_min_tilt(self, config: CoverConfig) -> float:
         """Minimum tilt the integration may set (preserves manual-close invariant).
