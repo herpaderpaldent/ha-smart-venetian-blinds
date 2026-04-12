@@ -7,6 +7,7 @@ Implements the drive-then-tilt control logic for venetian blinds.
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
@@ -223,18 +224,7 @@ class CoverController:
                 return False
 
         # Check manual open threshold (based on POSITION, not tilt).
-        # If the cover was raised above the threshold by the user (e.g. to step out through
-        # a patio door), skip auto-control until the cover is lowered again.
-        # Exceptions (bypass this check):
-        # - _first_facade_hit_this_cycle: covers raised overnight by no_sun_behavior="open"
-        # - obstacle_just_cleared: cover was raised by obstacle no-sun behaviour and sun
-        #   just crossed the obstacle threshold — must drive it back down automatically.
-        if (
-            config.respect_manual_open
-            and not self._first_facade_hit_this_cycle
-            and not obstacle_just_cleared
-            and current_position >= config.manual_open_threshold
-        ):
+        if self._should_respect_manual_open(config, current_position, obstacle_just_cleared):
             LOGGER.debug(
                 "Cover %s position at %d%% (at or above threshold %d%%), respecting manual open",
                 config.entity_id,
@@ -255,17 +245,7 @@ class CoverController:
             await self._wait_for_position(config.entity_id, config.drive_position)
 
         # Calculate target tilt — apply per-cover angle bounds before inversion.
-        # The coordinator computes one shared result using group geometry defaults (min=0°,
-        # max=90°); per-cover min_angle/max_angle constraints are enforced here.
-        #
-        # Semantic mapping (standard tilt space, before inversion):
-        #   max_angle_deg → floor on tilt: cover cannot close past max_angle
-        #   min_angle_deg → ceiling on tilt: cover cannot be more open than min_angle
-        tilt_percent = calculation.slat_tilt_percent
-        if config.max_angle < 90:
-            tilt_percent = max(tilt_percent, 100.0 * (1.0 - config.max_angle / 90.0))
-        if config.min_angle > 0:
-            tilt_percent = min(tilt_percent, 100.0 * (1.0 - config.min_angle / 90.0))
+        tilt_percent = self._apply_angle_constraints(calculation.slat_tilt_percent, config)
 
         tilt_percent = apply_tilt_inversion(tilt_percent, config.invert_tilt)
         # Never set below our own threshold — preserves the manual-close invariant
@@ -294,6 +274,55 @@ class CoverController:
 
         await self._set_cover_tilt(config.entity_id, tilt_percent)
         return True
+
+    def _should_respect_manual_open(
+        self,
+        config: CoverConfig,
+        current_position: int,
+        obstacle_just_cleared: bool,
+    ) -> bool:
+        """Return True if manual-open state should prevent auto-control this cycle.
+
+        Manual-open is bypassed on the first facade hit of the day (to bring down
+        covers raised overnight) and when an obstacle just cleared (same logic for
+        the obstacle-open case).
+
+        Args:
+            config: The cover configuration.
+            current_position: Current cover position (0-100).
+            obstacle_just_cleared: True if the obstacle threshold was just crossed upward.
+
+        Returns:
+            True if auto-control should be skipped to respect the user's manual open.
+        """
+        if not config.respect_manual_open:
+            return False
+        if self._first_facade_hit_this_cycle or obstacle_just_cleared:
+            return False
+        return current_position >= config.manual_open_threshold
+
+    def _apply_angle_constraints(self, tilt_percent: float, config: CoverConfig) -> float:
+        """Apply per-cover min/max angle bounds in standard (pre-inversion) tilt space.
+
+        The coordinator computes one shared result using group geometry defaults (min=0°,
+        max=90°); per-cover angle constraints are enforced here before inversion.
+
+        Semantic mapping:
+            max_angle_deg → floor on tilt: cover cannot close past max_angle
+            min_angle_deg → ceiling on tilt: cover cannot be more open than min_angle
+
+        Args:
+            tilt_percent: Raw tilt from the calculation result.
+            config: The cover configuration carrying min_angle/max_angle.
+
+        Returns:
+            Tilt percent clamped to the configured angle bounds.
+        """
+        if config.max_angle < 90:
+            tilt_percent = max(tilt_percent, 100.0 * (1.0 - config.max_angle / 90.0))
+        if config.min_angle > 0:
+            tilt_percent = min(tilt_percent, 100.0 * (1.0 - config.min_angle / 90.0))
+        return tilt_percent
 
     def _effective_min_tilt(self, config: CoverConfig) -> float:
         """Minimum tilt the integration may set (preserves manual-close invariant).
@@ -372,38 +401,46 @@ class CoverController:
             await self._set_cover_tilt(config.entity_id, tilt)
             return True
 
-        behavior = config.no_sun_behavior
+        dispatch: dict[str, Callable[[], Coroutine[None, None, bool]]] = {
+            "keep_last": lambda: self._no_sun_keep_last(config),
+            "open": lambda: self._no_sun_open(config),
+            "close": lambda: self._no_sun_close(config),
+            "set_to_percent": lambda: self._no_sun_set_to_percent(config),
+        }
 
-        if behavior == "keep_last":
-            LOGGER.debug("No sun, keeping last position for %s", config.entity_id)
+        handler = dispatch.get(config.no_sun_behavior)
+        if handler is None:
+            LOGGER.warning("Unknown no_sun_behavior: %s", config.no_sun_behavior)
             return False
+        return await handler()
 
-        if behavior == "open":
-            current_position = self._get_cover_position(config.entity_id)
-            if current_position is not None and abs(current_position - 100) > self.POSITION_TOLERANCE_PERCENT:
-                LOGGER.debug("No sun, raising %s to 100%%", config.entity_id)
-                await self._set_cover_position(config.entity_id, 100)
-                await self._wait_for_position(config.entity_id, 100)
-            return True
-
-        if behavior == "close":
-            tilt = max(0.0, self._effective_min_tilt(config))
-            LOGGER.debug("No sun, closing %s", config.entity_id)
-            await self._set_cover_tilt(config.entity_id, tilt)
-            return True
-
-        if behavior == "set_to_percent":
-            tilt = max(float(config.no_sun_position), self._effective_min_tilt(config))
-            LOGGER.debug(
-                "No sun, setting %s to %d%%",
-                config.entity_id,
-                config.no_sun_position,
-            )
-            await self._set_cover_tilt(config.entity_id, tilt)
-            return True
-
-        LOGGER.warning("Unknown no_sun_behavior: %s", behavior)
+    async def _no_sun_keep_last(self, config: CoverConfig) -> bool:
+        """No-sun behavior: keep current position unchanged."""
+        LOGGER.debug("No sun, keeping last position for %s", config.entity_id)
         return False
+
+    async def _no_sun_open(self, config: CoverConfig) -> bool:
+        """No-sun behavior: raise cover to fully open position."""
+        current_position = self._get_cover_position(config.entity_id)
+        if current_position is not None and abs(current_position - 100) > self.POSITION_TOLERANCE_PERCENT:
+            LOGGER.debug("No sun, raising %s to 100%%", config.entity_id)
+            await self._set_cover_position(config.entity_id, 100)
+            await self._wait_for_position(config.entity_id, 100)
+        return True
+
+    async def _no_sun_close(self, config: CoverConfig) -> bool:
+        """No-sun behavior: close slats to effective minimum tilt."""
+        tilt = max(0.0, self._effective_min_tilt(config))
+        LOGGER.debug("No sun, closing %s", config.entity_id)
+        await self._set_cover_tilt(config.entity_id, tilt)
+        return True
+
+    async def _no_sun_set_to_percent(self, config: CoverConfig) -> bool:
+        """No-sun behavior: set tilt to configured no_sun_position."""
+        tilt = max(float(config.no_sun_position), self._effective_min_tilt(config))
+        LOGGER.debug("No sun, setting %s to %d%%", config.entity_id, config.no_sun_position)
+        await self._set_cover_tilt(config.entity_id, tilt)
+        return True
 
     def _get_cover_position(self, entity_id: str) -> int | None:
         """

@@ -41,6 +41,18 @@ PLATFORMS: list[Platform] = [
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 
+def _create_controller(hass: HomeAssistant, entry: SmartVenetianBlindsConfigEntry) -> CoverController:
+    """Create a CoverController from a config entry's current runtime state."""
+    state = entry.runtime_data.state
+    return CoverController(
+        hass,
+        sun_has_hit_facade=state.sun_has_hit_facade,
+        first_facade_hit_this_cycle=state.is_first_facade_hit,
+        position_timeout_sec=entry.options.get(CONF_POSITION_TIMEOUT, DEFAULT_POSITION_TIMEOUT),
+        obstacle_was_blocking=state.obstacle_was_blocking,
+    )
+
+
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """
     Set up the integration.
@@ -110,13 +122,7 @@ async def async_setup_entry(
             return
 
         # Apply to covers (controller handles None via _handle_no_sun)
-        controller = CoverController(
-            hass,
-            sun_has_hit_facade=state.sun_has_hit_facade,
-            first_facade_hit_this_cycle=state.is_first_facade_hit,
-            position_timeout_sec=entry.options.get(CONF_POSITION_TIMEOUT, DEFAULT_POSITION_TIMEOUT),
-            obstacle_was_blocking=state.obstacle_was_blocking,
-        )
+        controller = _create_controller(hass, entry)
         results = await controller.apply_to_all_covers(
             entry.subentries,
             calculation,
