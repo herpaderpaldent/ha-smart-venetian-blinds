@@ -45,7 +45,7 @@ jobs:
           BRANCH="chore/update-diagrams-${GITHUB_SHA::8}"
           git checkout -b "$BRANCH"
           git commit -m "chore: regenerate behavior diagrams"
-          git push origin "$BRANCH"
+          git push --force origin "$BRANCH"
           gh pr create \
             --base main \
             --head "$BRANCH" \
