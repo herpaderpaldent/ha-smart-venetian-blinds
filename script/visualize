@@ -864,17 +864,18 @@ def chart_exit() -> None:
     sc = SOUTH_WINTER
     OPEN_THRESHOLD = 90  # manual_open_threshold %
     EXIT_POS = 95  # cover position user raised it to
-    EXIT_START = 11 * 60 + 30  # 11:30
+    EXIT_START = 11 * 60 + 30  # 11:30 — user raises cover
+    EXIT_END = EXIT_START + 60  # 12:30 — user lowers cover again
 
-    # Simulate user raising the cover at EXIT_START.
-    # ExitDetectionPipe detects position >= threshold → sets exit_paused=True.
-    # Tracking stays paused (ExitPausedCheckPipe short-circuits) until the next
-    # no-sun period, when NoSunPipe resets exit_paused.
+    # Simulate user raising cover at EXIT_START → ExitDetectionPipe sets exit_paused=True.
+    # Then at EXIT_END user lowers the cover to DRIVE_POSITION.
+    # ExitPausedCheckPipe sees position < threshold → clears exit_paused → tracking resumes.
     sim = simulate_day(
         sc,
         make_config(respect_manual_open=True, manual_open_threshold=OPEN_THRESHOLD),
         force_at={
-            EXIT_START: (float(EXIT_POS), None),  # user raises cover → triggers exit detection
+            EXIT_START: (float(EXIT_POS), None),  # user raises cover
+            EXIT_END: (float(DRIVE_POSITION), None),  # user lowers cover again
         },
     )
 
@@ -882,16 +883,16 @@ def chart_exit() -> None:
     tilts = [s.tilt for s in sim]
     posits = [s.position for s in sim]
 
-    # Derive exit-paused mask: after EXIT_START while sun is active and cover is raised
+    # Derive exit-paused mask from simulated positions
     exit_mask = [
-        t >= EXIT_START and sc.elevation(t) > 0 and posits[i] > OPEN_THRESHOLD - 10 for i, t in enumerate(times)
+        t >= EXIT_START and posits[i] > OPEN_THRESHOLD - 10 and sc.elevation(t) > 0 for i, t in enumerate(times)
     ]
 
     fig, ax_sun, ax_tilt = make_figure(
         "Exit Mode (Manual-Open Detection) — South Facade",
         f"{sc.label}\n"
-        f"When cover position ≥ {OPEN_THRESHOLD}% (user raised it to step outside), "
-        "the integration pauses.  Tracking resumes at the next no-sun period (sunset).",
+        f"When cover position ≥ {OPEN_THRESHOLD}% the integration pauses.  "
+        f"Tracking resumes automatically once the cover is lowered below the threshold.",
     )
 
     style_sun_ax(ax_sun, elevs, sc)
@@ -902,6 +903,7 @@ def chart_exit() -> None:
     ax_tilt.plot(t_hours, tilts, color=C_TILT, linewidth=2.2, label="Cover tilt")
     ax_tilt.fill_between(t_hours, tilts, alpha=0.08, color=C_TILT)
     ax_tilt.axvline(EXIT_START / 60, color=C_POS, linewidth=1.2, linestyle="--")
+    ax_tilt.axvline(EXIT_END / 60, color=C_POS, linewidth=1.2, linestyle="--")
 
     ax_pos = add_position_axis(ax_tilt, posits)
 
@@ -914,19 +916,16 @@ def chart_exit() -> None:
         color=C_POS,
         arrowprops=dict(arrowstyle="->", color=C_POS, lw=0.8),
     )
-    # Find when sun sets and no-sun resets exit_paused
-    for t in times:
-        if t > EXIT_START and sc.elevation(t) <= 0:
-            ax_tilt.axvline(t / 60, color="#888", linewidth=1, linestyle="--")
-            ax_tilt.text(
-                t / 60 + 0.1,
-                55,
-                f"Sunset ~{fmt_time(t / 60)}\n→ exit mode cleared\n(tracking resumes\nnext morning)",
-                fontsize=8,
-                color="#555",
-                va="center",
-            )
-            break
+    resume_tl = _sim_at(sim, EXIT_END).tilt
+    ax_tilt.annotate(
+        f"{fmt_time(EXIT_END / 60)} — user lowers cover\n→ tracking resumes",
+        xy=(EXIT_END / 60, resume_tl),
+        xytext=(EXIT_END / 60 + 1.3, resume_tl + 18),
+        fontsize=8,
+        ha="center",
+        color="#555",
+        arrowprops=dict(arrowstyle="->", color="#888", lw=0.8),
+    )
 
     style_tilt_ax(ax_tilt)
     combined_legend(ax_tilt, ax_pos, ax_sun)
@@ -935,9 +934,9 @@ def chart_exit() -> None:
         {
             "Facade": f"{sc.facade_azimuth}° (south)",
             "Manual-open threshold": f"{OPEN_THRESHOLD}% position",
-            "Exit triggered at": fmt_time(EXIT_START / 60),
-            "Trigger": f"user raises cover ≥ {OPEN_THRESHOLD}% → exit_paused=True",
-            "Resume": "automatically at next no-sun period (sunset)",
+            "Exit start / end": f"{fmt_time(EXIT_START / 60)} / {fmt_time(EXIT_END / 60)}",
+            "Trigger": f"user raises cover ≥ {OPEN_THRESHOLD}% → exit_paused",
+            "Resume": "user lowers cover below threshold → tracking resumes",
             "Day": sc.label.split("—")[1].strip(),
         },
         ax_top=ax_pos,
