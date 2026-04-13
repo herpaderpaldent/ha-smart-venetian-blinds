@@ -270,6 +270,10 @@ split-on-trailing-comma = false
 "script/*" = [
     "T20",     # print() allowed in scripts
     "INP001",  # Implicit namespace package (scripts are not a package)
+    "D",       # Docstrings not required in utility scripts
+    "PTH",     # os.path vs pathlib – acceptable in scripts
+    "C408",    # dict() vs {} literal – acceptable in scripts
+    "ARG",     # Unused arguments – fine in mock/stub classes
 ]
 "tests/*" = [
     "S101",    # assert is fine in tests
