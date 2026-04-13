@@ -138,7 +138,7 @@ flowchart TD
     E2 -->|no| E3["reset exit_paused<br/>set in_no_sun = true<br/>dispatch no-sun action"]
     E3 --> Z
 
-    F -->|"position ≥ threshold<br/>AND NOT first_sun_hit"| F1[set exit_paused = true]
+    F -->|"position ≥ manual_open_threshold<br/>AND NOT first_sun_hit"| F1[set exit_paused = true]
     F1 --> Z
     F -->|below threshold| G[PositionDrivePipe]
     G -->|"drive to drive_position<br/>if not already there"| H[TiltPipe]
