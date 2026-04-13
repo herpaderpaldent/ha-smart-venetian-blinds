@@ -130,18 +130,18 @@ flowchart TD
     D -->|exit_paused = true| Z
     D --> E[NoSunPipe]
 
-    E -->|sun active, was in no-sun| E1[set first_sun_hit = true\nclear in_no_sun]
+    E -->|sun active, was in no-sun| E1["set first_sun_hit = true<br/>clear in_no_sun"]
     E1 --> F
     E -->|sun active, normal| F[ExitDetectionPipe]
-    E -->|no sun / behind facade| E2{in_no_sun\nalready?}
+    E -->|no sun / behind facade| E2{"in_no_sun<br/>already?"}
     E2 -->|yes| Z
-    E2 -->|no| E3[reset exit_paused\nset in_no_sun = true\ndispatch no-sun action]
+    E2 -->|no| E3["reset exit_paused<br/>set in_no_sun = true<br/>dispatch no-sun action"]
     E3 --> Z
 
-    F -->|position ≥ threshold\nAND NOT first_sun_hit| F1[set exit_paused = true]
+    F -->|"position ≥ threshold<br/>AND NOT first_sun_hit"| F1[set exit_paused = true]
     F1 --> Z
     F -->|below threshold| G[PositionDrivePipe]
-    G -->|drive to drive_position\nif not already there| H[TiltPipe]
+    G -->|"drive to drive_position<br/>if not already there"| H[TiltPipe]
     H --> I([apply calculated tilt])
 ```
 
