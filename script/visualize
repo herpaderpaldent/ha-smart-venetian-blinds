@@ -779,7 +779,7 @@ def chart_sleep() -> None:
             14 * 60: (None, 0.0),  # siesta — user closes slats
             15 * 60: (None, 50.0),  # end siesta — user opens slats → pipeline resumes
         },
-        initial_position=100.0,  # cover raised overnight (no-sun behaviour)
+        initial_position=0.0,  # cover already driven down — user closed slats while cover was at drive_position
         initial_tilt=0.0,  # user closed slats before sleeping
     )
 
