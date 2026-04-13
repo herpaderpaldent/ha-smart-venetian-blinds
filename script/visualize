@@ -874,8 +874,8 @@ def chart_exit() -> None:
         sc,
         make_config(respect_manual_open=True, manual_open_threshold=OPEN_THRESHOLD),
         force_at={
-            EXIT_START: (float(EXIT_POS), None),  # user raises cover
-            EXIT_END: (float(DRIVE_POSITION), None),  # user lowers cover again
+            EXIT_START: (float(EXIT_POS), 100.0),  # user raises cover → slats open to 100%
+            EXIT_END: (float(DRIVE_POSITION), 100.0),  # user lowers cover → pipeline takes over tilt
         },
     )
 
