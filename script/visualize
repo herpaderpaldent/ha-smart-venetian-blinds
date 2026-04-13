@@ -793,9 +793,11 @@ def chart_sleep() -> None:
         sc,
         make_config(respect_manual_close=True, manual_close_threshold=SLEEP_THRESHOLD),
         force_at={
-            10 * 60: (None, 50.0),  # user opens slats at 10:00 → pipeline resumes, drives to position
+            9 * 60 + 59: (None, float(SLEEP_THRESHOLD) + 1),  # tilt crosses threshold → pipeline unlocks
+            10 * 60: (None, 50.0),  # user keeps opening slats → pipeline drives + tilts
             14 * 60: (None, 0.0),  # siesta — user closes slats
-            15 * 60: (None, 50.0),  # end siesta — user opens slats → pipeline resumes
+            15 * 60: (None, float(SLEEP_THRESHOLD) + 1),  # tilt crosses threshold → pipeline unlocks
+            15 * 60 + 1: (None, 50.0),  # user keeps opening slats → pipeline drives + tilts
         },
         initial_position=0.0,  # cover already driven down — user closed slats while cover was at drive_position
         initial_tilt=0.0,  # user closed slats before sleeping
@@ -844,6 +846,18 @@ def chart_sleep() -> None:
         bbox=ANNOT_BBOX,
         zorder=5,
     )
+    # Arrow from the threshold line at the crossing point — explains why tracking resumes
+    ax_tilt.annotate(
+        f"User raises tilt above {SLEEP_THRESHOLD}%\n→ pipeline unlocks & drives cover",
+        xy=(10.0, SLEEP_THRESHOLD),
+        xytext=(11.5, SLEEP_THRESHOLD + 22),
+        fontsize=8,
+        ha="center",
+        color="#FF6F00",
+        arrowprops=dict(arrowstyle="->", color="#FF6F00", lw=0.9),
+        bbox=ANNOT_BBOX,
+        zorder=5,
+    )
     ax_tilt.annotate(
         "Wakes 10:00\n→ tracking resumes",
         xy=(10.0, wake_tl),
@@ -863,6 +877,17 @@ def chart_sleep() -> None:
         ha="center",
         color="#555",
         arrowprops=dict(arrowstyle="->", color="#888", lw=0.8),
+        bbox=ANNOT_BBOX,
+        zorder=5,
+    )
+    ax_tilt.annotate(
+        f"Raise above {SLEEP_THRESHOLD}%\n→ resumes again",
+        xy=(15.0, SLEEP_THRESHOLD),
+        xytext=(16.2, SLEEP_THRESHOLD + 22),
+        fontsize=8,
+        ha="center",
+        color="#FF6F00",
+        arrowprops=dict(arrowstyle="->", color="#FF6F00", lw=0.9),
         bbox=ANNOT_BBOX,
         zorder=5,
     )
