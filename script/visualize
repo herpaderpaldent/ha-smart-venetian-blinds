@@ -232,6 +232,8 @@ def simulate_day(
     config: CoverConfig,
     *,
     force_at: dict[int, tuple[float | None, float | None]] | None = None,
+    initial_position: float = 100.0,
+    initial_tilt: float = 100.0,
 ) -> list[CoverState]:
     """
     Simulate a full day through the real cover control pipeline.
@@ -246,6 +248,8 @@ def simulate_day(
         force_at: Injected user actions {time_minutes: (position|None, tilt|None)}.
                   Use this to simulate manual cover operations such as closing slats
                   (sleep) or raising the cover (exit detection).
+        initial_position: Starting cover position in % (default 100 = fully raised).
+        initial_tilt: Starting slat tilt in % (default 100 = fully open).
 
     Returns:
         List of CoverState for each minute in `times`.
@@ -253,8 +257,8 @@ def simulate_day(
 
     async def _run() -> list[CoverState]:
         hass = MockHass()
-        hass.states.position = 100.0
-        hass.states.tilt = 100.0
+        hass.states.position = initial_position
+        hass.states.tilt = initial_tilt
         tracking = CoverTrackingState()
         results: list[CoverState] = []
 
@@ -769,13 +773,14 @@ def chart_sleep() -> None:
     # force_at keys are absolute minute values matching `times`.
     sim = simulate_day(
         sc,
-        make_config(respect_manual_close=True, manual_close_threshold=SLEEP_THRESHOLD),
+        make_config(respect_manual_close=True, manual_close_threshold=SLEEP_THRESHOLD, no_sun_behavior="keep_last"),
         force_at={
-            START_MIN: (None, 0.0),  # overnight sleep — slats already closed at sim start
-            10 * 60: (None, 50.0),  # user opens slats at 10:00 → pipeline resumes
+            10 * 60: (None, 50.0),  # user opens slats at 10:00 → pipeline resumes, drives to position
             14 * 60: (None, 0.0),  # siesta — user closes slats
             15 * 60: (None, 50.0),  # end siesta — user opens slats → pipeline resumes
         },
+        initial_position=100.0,  # cover raised overnight (no-sun behaviour)
+        initial_tilt=0.0,  # user closed slats before sleeping
     )
 
     elevs = [sc.elevation(t) for t in times]
