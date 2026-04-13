@@ -414,6 +414,9 @@ C_SHADE = "#BDBDBD"  # grey
 C_OBS = "#D32F2F"  # red
 C_GHOST = "#90CAF9"  # light blue
 
+# Shared bbox style for all annotations — white background so text floats above lines
+ANNOT_BBOX = {"boxstyle": "round,pad=0.25", "fc": "white", "ec": "none", "alpha": 0.85}
+
 # ---------------------------------------------------------------------------
 # Shared plot helpers
 # ---------------------------------------------------------------------------
@@ -575,6 +578,8 @@ def chart_vanilla() -> None:
         ha="center",
         color="#555",
         arrowprops=dict(arrowstyle="->", color="#888", lw=0.8),
+        bbox=ANNOT_BBOX,
+        zorder=5,
     )
     mor_t = sc.sunrise_min + 60
     mor_tl = _sim_at(sim, mor_t).tilt
@@ -586,6 +591,8 @@ def chart_vanilla() -> None:
         ha="left",
         color="#555",
         arrowprops=dict(arrowstyle="->", color="#888", lw=0.8),
+        bbox=ANNOT_BBOX,
+        zorder=5,
     )
     ax_tilt.annotate(
         f"Cover driven to {DRIVE_POSITION}%\nbefore tilting",
@@ -595,6 +602,8 @@ def chart_vanilla() -> None:
         ha="center",
         color=C_POS,
         arrowprops=dict(arrowstyle="->", color=C_POS, lw=0.8),
+        bbox=ANNOT_BBOX,
+        zorder=5,
     )
 
     style_tilt_ax(ax_tilt)
@@ -656,6 +665,8 @@ def chart_east() -> None:
         ha="center",
         color="#555",
         arrowprops=dict(arrowstyle="->", color="#888", lw=0.8),
+        bbox=ANNOT_BBOX,
+        zorder=5,
     )
     ax_tilt.annotate(
         f"09:00 higher sun → more open ({tl_9:.0f}%)",
@@ -665,6 +676,8 @@ def chart_east() -> None:
         ha="center",
         color="#555",
         arrowprops=dict(arrowstyle="->", color="#888", lw=0.8),
+        bbox=ANNOT_BBOX,
+        zorder=5,
     )
     # Find transition to behind-facade
     for i, t in enumerate(times):
@@ -744,6 +757,8 @@ def chart_obstacle() -> None:
                 ha="left",
                 color="#555",
                 arrowprops=dict(arrowstyle="->", color="#888", lw=0.8),
+                bbox=ANNOT_BBOX,
+                zorder=5,
             )
             break
 
@@ -826,6 +841,8 @@ def chart_sleep() -> None:
         ha="center",
         color="#555",
         arrowprops=dict(arrowstyle="->", color="#888", lw=0.8),
+        bbox=ANNOT_BBOX,
+        zorder=5,
     )
     ax_tilt.annotate(
         "Wakes 10:00\n→ tracking resumes",
@@ -835,6 +852,8 @@ def chart_sleep() -> None:
         ha="center",
         color="#555",
         arrowprops=dict(arrowstyle="->", color="#888", lw=0.8),
+        bbox=ANNOT_BBOX,
+        zorder=5,
     )
     ax_tilt.annotate(
         "Siesta 14:00–15:00",
@@ -844,6 +863,8 @@ def chart_sleep() -> None:
         ha="center",
         color="#555",
         arrowprops=dict(arrowstyle="->", color="#888", lw=0.8),
+        bbox=ANNOT_BBOX,
+        zorder=5,
     )
 
     style_tilt_ax(ax_tilt)
@@ -923,6 +944,8 @@ def chart_exit() -> None:
         ha="center",
         color=C_POS,
         arrowprops=dict(arrowstyle="->", color=C_POS, lw=0.8),
+        bbox=ANNOT_BBOX,
+        zorder=5,
     )
     resume_tl = _sim_at(sim, EXIT_END).tilt
     ax_tilt.annotate(
@@ -933,6 +956,8 @@ def chart_exit() -> None:
         ha="center",
         color="#555",
         arrowprops=dict(arrowstyle="->", color="#888", lw=0.8),
+        bbox=ANNOT_BBOX,
+        zorder=5,
     )
 
     style_tilt_ax(ax_tilt)
