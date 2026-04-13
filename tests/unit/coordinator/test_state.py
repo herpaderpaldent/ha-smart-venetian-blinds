@@ -8,6 +8,7 @@ from freezegun import freeze_time
 import pytest
 
 from custom_components.smart_venetian_blinds.coordinator.state import GroupState
+from custom_components.smart_venetian_blinds.cover_control.context import CoverTrackingState
 from custom_components.smart_venetian_blinds.sun.math import SlatCalculationResult, SunPosition
 
 
@@ -260,13 +261,17 @@ class TestResetForFreshStart:
     """Tests for GroupState.reset_for_fresh_start method."""
 
     def test_clears_sun_tracking(self) -> None:
-        """reset_for_fresh_start clears sun_has_hit_facade and no_sun_action_applied."""
-        state = GroupState(sun_has_hit_facade=True, no_sun_action_applied=True)
+        """reset_for_fresh_start clears cover_states and throttle."""
+        state = GroupState()
+        state.cover_states["cover.test"] = CoverTrackingState(exit_paused=True, in_no_sun=True)
+        state.last_applied_angle = 45.0
+        state.last_applied_time = datetime(2024, 1, 15, 12, 0, 0, tzinfo=UTC)
 
         state.reset_for_fresh_start()
 
-        assert state.sun_has_hit_facade is False
-        assert state.no_sun_action_applied is False
+        assert state.cover_states == {}
+        assert state.last_applied_angle is None
+        assert state.last_applied_time is None
 
     def test_clears_throttle_state(self) -> None:
         """reset_for_fresh_start clears both last_applied_angle and last_applied_time."""
@@ -287,22 +292,14 @@ class TestResetForFreshStart:
 
         state.reset_for_fresh_start()
 
-        result = state.should_apply(
-            new_angle=46.0,
-            threshold_deg=5.0,
-            min_interval_sec=3600,
-        )
+        result = state.should_apply(new_angle=46.0, threshold_deg=5.0, min_interval_sec=3600)
         assert result is True
 
-    def test_preserves_other_state(self) -> None:
-        """reset_for_fresh_start preserves auto_control and cover_positions."""
+    def test_preserves_auto_control(self) -> None:
+        """reset_for_fresh_start preserves auto_control_enabled."""
         state = GroupState(auto_control_enabled=False)
-        state.cover_positions["cover.test"] = 75.0
-
         state.reset_for_fresh_start()
-
         assert state.auto_control_enabled is False
-        assert state.cover_positions["cover.test"] == 75.0
 
 
 @pytest.mark.unit

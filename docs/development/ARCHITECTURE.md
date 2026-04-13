@@ -25,7 +25,17 @@ custom_components/smart_venetian_blinds/
 │   └── math.py              # Slat angle calculations, SunPosition, SlatCalculationResult
 ├── cover_control/           # Cover tilt application
 │   ├── __init__.py
-│   └── controller.py        # CoverController (drive-then-tilt logic)
+│   ├── context.py           # CoverContext (per-cycle) and CoverTrackingState (persisted)
+│   ├── controller.py        # CoverController, CoverConfig, Pipeline
+│   └── pipes/               # Pipeline stages (chain of responsibility)
+│       ├── __init__.py
+│       ├── enabled.py       # EnabledPipe — skip disabled covers
+│       ├── sleep_protection.py # SleepProtectionPipe — skip if tilt below threshold
+│       ├── exit_paused.py   # ExitPausedCheckPipe — skip if exit_paused
+│       ├── no_sun.py        # NoSunPipe — no-sun detection, dispatch, sunrise bypass
+│       ├── exit_detection.py # ExitDetectionPipe — auto-detect manual open / exit mode
+│       ├── position_drive.py # PositionDrivePipe — drive to target position
+│       └── tilt.py          # TiltPipe — apply calculated tilt
 ├── config_flow_handler/     # Config flow implementation
 │   ├── __init__.py          # Package exports
 │   ├── handler.py           # Backward compatibility wrapper
@@ -85,7 +95,7 @@ The coordinator receives sun position updates from the listener and computes opt
 **Package structure:**
 
 - `base.py` - Main coordinator class (`SmartVenetianBlindsDataUpdateCoordinator`)
-- `state.py` - `GroupState` dataclass: holds calculation results, throttling state, auto-control flag, and no-sun tracking
+- `state.py` - `GroupState` dataclass: holds calculation results, throttling state, auto-control flag, and per-cover tracking state (`cover_states`)
 
 **Core functionality:**
 
@@ -100,13 +110,53 @@ The coordinator receives sun position updates from the listener and computes opt
 
 **Directory:** `cover_control/`
 
-Applies calculated slat angles to physical cover entities.
+Applies calculated slat angles to physical cover entities via a **pipeline (chain of responsibility)**. Each pipe handles one concern and either short-circuits or passes control to the next pipe.
 
-**Key class:** `CoverController`
+**Package structure:**
 
-- Implements drive-then-tilt pattern: first drives cover to target position, then applies tilt angle
-- Handles tilt inversion for covers with reversed tilt direction
-- Respects manual close detection ("sleep mode") to avoid overriding user-closed blinds
+- `controller.py` - `CoverController`, `CoverConfig`, `Pipeline`
+- `context.py` - `CoverContext` (per-cycle state) and `CoverTrackingState` (persisted per cover)
+- `pipes/` - Individual pipeline stages
+
+**Pipeline execution order:**
+
+```mermaid
+flowchart TD
+    A([Sun update]) --> B[EnabledPipe]
+    B -->|disabled| Z([stop])
+    B --> C[SleepProtectionPipe]
+    C -->|tilt &lt; manual_close_threshold| Z
+    C --> D[ExitPausedCheckPipe]
+    D -->|exit_paused = true| Z
+    D --> E[NoSunPipe]
+
+    E -->|sun active, was in no-sun| E1[set first_sun_hit = true\nclear in_no_sun]
+    E1 --> F
+    E -->|sun active, normal| F[ExitDetectionPipe]
+    E -->|no sun / behind facade| E2{in_no_sun\nalready?}
+    E2 -->|yes| Z
+    E2 -->|no| E3[reset exit_paused\nset in_no_sun = true\ndispatch no-sun action]
+    E3 --> Z
+
+    F -->|position ≥ threshold\nAND NOT first_sun_hit| F1[set exit_paused = true]
+    F1 --> Z
+    F -->|below threshold| G[PositionDrivePipe]
+    G -->|drive to drive_position\nif not already there| H[TiltPipe]
+    H --> I([apply calculated tilt])
+```
+
+**`CoverTrackingState`** (persisted per cover in `GroupState.cover_states`):
+
+| Field | Purpose |
+|---|---|
+| `exit_paused` | Set by auto exit-detection or user switch. Cleared at start of each no-sun period. |
+| `in_no_sun` | True once the no-sun action has fired for the current no-sun period. Cleared when sun returns. |
+
+**`CoverContext`** (per-cycle, not persisted):
+
+| Field | Purpose |
+|---|---|
+| `first_sun_hit` | Set by `NoSunPipe` on the `in_no_sun → sun active` transition. Tells `ExitDetectionPipe` to skip this cycle to prevent false exit detection after `no_sun_behavior="open"` raised the cover to 100%. |
 
 ### Config Flow
 

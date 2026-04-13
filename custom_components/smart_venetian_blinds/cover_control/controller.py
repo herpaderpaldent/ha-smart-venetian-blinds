@@ -1,13 +1,12 @@
 """
 Cover controller for smart_venetian_blinds.
 
-Implements the drive-then-tilt control logic for venetian blinds.
+Implements the cover control pipeline: a chain of responsibility that drives
+covers to their target position and applies the calculated slat angle.
 """
 
 from __future__ import annotations
 
-import asyncio
-from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
@@ -52,9 +51,16 @@ from custom_components.smart_venetian_blinds.const import (
     DEFAULT_RESPECT_MANUAL_OPEN,
     LOGGER,
 )
-from custom_components.smart_venetian_blinds.sun.math import apply_tilt_inversion
-from homeassistant.components.cover import ATTR_CURRENT_POSITION, ATTR_CURRENT_TILT_POSITION
-from homeassistant.const import ATTR_ENTITY_ID, SERVICE_SET_COVER_POSITION, SERVICE_SET_COVER_TILT_POSITION
+from custom_components.smart_venetian_blinds.cover_control.context import CoverContext, CoverTrackingState
+from custom_components.smart_venetian_blinds.cover_control.pipes import (
+    EnabledPipe,
+    ExitDetectionPipe,
+    ExitPausedCheckPipe,
+    NoSunPipe,
+    PositionDrivePipe,
+    SleepProtectionPipe,
+    TiltPipe,
+)
 
 if TYPE_CHECKING:
     from custom_components.smart_venetian_blinds.sun import SlatCalculationResult
@@ -121,38 +127,85 @@ class CoverConfig:
         )
 
 
+class Pipeline:
+    """
+    Cover control pipeline (chain of responsibility).
+
+    Each pipe receives a CoverContext and either short-circuits (returning a bool)
+    or passes control to the next pipe via call_next(). Pipes are called in order.
+    """
+
+    def __init__(
+        self,
+        pipes: list[
+            EnabledPipe
+            | SleepProtectionPipe
+            | ExitPausedCheckPipe
+            | NoSunPipe
+            | ExitDetectionPipe
+            | PositionDrivePipe
+            | TiltPipe
+        ],
+    ) -> None:
+        """Initialize with an ordered list of pipes."""
+        self._pipes = pipes
+
+    async def run(self, ctx: CoverContext) -> bool:
+        """Run the pipeline against the given context."""
+
+        async def call(index: int) -> bool:
+            if index >= len(self._pipes):
+                return False
+            pipe = self._pipes[index]
+
+            async def call_next() -> bool:
+                return await call(index + 1)
+
+            return await pipe.handle(ctx, call_next)
+
+        return await call(0)
+
+
 class CoverController:
     """
     Controller for applying tilt to covers.
 
-    Implements the drive-then-tilt control sequence with:
-    - Manual close detection (respects user closing blinds)
-    - Position-based waiting
-    - Tilt inversion support
+    Runs each cover through a pipeline of pipes that implement the drive-then-tilt
+    sequence with sleep protection, exit-pause detection, no-sun handling, and
+    per-cover angle constraints.
     """
-
-    # Position tolerance — class-level constant (not user-configurable)
-    POSITION_TOLERANCE_PERCENT = 2
 
     def __init__(
         self,
         hass: HomeAssistant,
         *,
-        sun_has_hit_facade: bool = False,
-        first_facade_hit_this_cycle: bool = False,
         position_timeout_sec: int = DEFAULT_POSITION_TIMEOUT,
-        obstacle_was_blocking: set[str] | None = None,
+        cover_states: dict[str, CoverTrackingState] | None = None,
     ) -> None:
         """Initialize the cover controller."""
         self._hass = hass
-        self._sun_has_hit_facade = sun_has_hit_facade
-        self._first_facade_hit_this_cycle = first_facade_hit_this_cycle
         self._position_timeout_sec = position_timeout_sec
-        # Tracks which covers were in obstacle-blocked (no-sun) state last cycle.
-        # Used to bypass the manual-open check on the first tracking cycle after
-        # the sun clears the obstacle threshold, so the cover is driven back down.
-        # Shared with GroupState so it persists across controller instances.
-        self._obstacle_was_blocking: set[str] = obstacle_was_blocking if obstacle_was_blocking is not None else set()
+        self._cover_states = cover_states if cover_states is not None else {}
+
+    def _get_or_create_state(self, entity_id: str) -> CoverTrackingState:
+        """Get or create the tracking state for a cover."""
+        if entity_id not in self._cover_states:
+            self._cover_states[entity_id] = CoverTrackingState()
+        return self._cover_states[entity_id]
+
+    def _build_pipeline(self) -> Pipeline:
+        """Build the cover control pipeline."""
+        return Pipeline(
+            [
+                EnabledPipe(),
+                SleepProtectionPipe(),
+                ExitPausedCheckPipe(),
+                NoSunPipe(self._position_timeout_sec),
+                ExitDetectionPipe(),
+                PositionDrivePipe(self._position_timeout_sec),
+                TiltPipe(),
+            ]
+        )
 
     async def apply_calculation(
         self,
@@ -160,408 +213,24 @@ class CoverController:
         calculation: SlatCalculationResult | None,
     ) -> bool:
         """
-            Apply calculated tilt to a cover.
-
-            Implements the drive-then-tilt sequence:
-            1. Check if cover is enabled
-        2. Check manual close threshold
-            3. Drive to position (if needed)
-            4. Apply tilt
-
-        Args:
-                config: The cover configuration.
-                calculation: The slat calculation result (None if sun below horizon).
-
-        Returns:
-                True if tilt was applied, False if skipped.
-        """
-        if not config.enabled:
-            LOGGER.debug("Cover %s is disabled, skipping", config.entity_id)
-            return False
-
-        # Handle no-sun case
-        if calculation is None or calculation.sun_is_behind_facade:
-            return await self._handle_no_sun(config)
-
-        # If sun elevation is below cover's obstacle horizon, treat as no-sun
-        if config.obstacle_elevation_deg > 0 and calculation.sun_elevation_deg <= config.obstacle_elevation_deg:
-            LOGGER.debug(
-                "Cover %s: sun elevation %.1f° is below obstacle angle %.1f°, applying no-sun behaviour",
-                config.entity_id,
-                calculation.sun_elevation_deg,
-                config.obstacle_elevation_deg,
-            )
-            self._obstacle_was_blocking.add(config.entity_id)
-            return await self._handle_no_sun(config)
-
-        # Sun is now above the obstacle threshold — check if we just transitioned out.
-        # If so, bypass the manual-open check this cycle so the cover is driven back down
-        # (same logic as _first_facade_hit_this_cycle for the sunrise case).
-        obstacle_just_cleared = config.entity_id in self._obstacle_was_blocking
-        self._obstacle_was_blocking.discard(config.entity_id)
-
-        # Get current cover position
-        current_position = self._get_cover_position(config.entity_id)
-        if current_position is None:
-            LOGGER.warning(
-                "Cannot get position for %s, skipping",
-                config.entity_id,
-            )
-            return False
-
-        # Check manual close threshold (based on TILT, not position).
-        # The invariant: the integration never sets tilt below this threshold (see _effective_min_tilt),
-        # so any tilt below it was put there by the user.
-        if config.respect_manual_close:
-            current_tilt = self._get_cover_tilt(config.entity_id)
-            if current_tilt is not None and current_tilt < config.manual_close_threshold:
-                LOGGER.debug(
-                    "Cover %s tilt at %.1f%% (below threshold %d%%), respecting manual close",
-                    config.entity_id,
-                    current_tilt,
-                    config.manual_close_threshold,
-                )
-                return False
-
-        # Check manual open threshold (based on POSITION, not tilt).
-        if self._should_respect_manual_open(config, current_position, obstacle_just_cleared):
-            LOGGER.debug(
-                "Cover %s position at %d%% (at or above threshold %d%%), respecting manual open",
-                config.entity_id,
-                current_position,
-                config.manual_open_threshold,
-            )
-            return False
-
-        # Drive to position if needed
-        if abs(current_position - config.drive_position) > self.POSITION_TOLERANCE_PERCENT:
-            LOGGER.debug(
-                "Driving %s from %d%% to %d%%",
-                config.entity_id,
-                current_position,
-                config.drive_position,
-            )
-            await self._set_cover_position(config.entity_id, config.drive_position)
-            await self._wait_for_position(config.entity_id, config.drive_position)
-
-        # Calculate target tilt — apply per-cover angle bounds before inversion.
-        tilt_percent = self._apply_angle_constraints(calculation.slat_tilt_percent, config)
-
-        tilt_percent = apply_tilt_inversion(tilt_percent, config.invert_tilt)
-        # Never set below our own threshold — preserves the manual-close invariant
-        tilt_percent = max(tilt_percent, self._effective_min_tilt(config))
-
-        # Check if tilt change is significant enough
-        current_tilt = self._get_cover_tilt(config.entity_id)
-        if current_tilt is not None:
-            tilt_change = abs(tilt_percent - current_tilt)
-            if tilt_change < config.minimum_tilt_change:
-                LOGGER.debug(
-                    "Cover %s tilt change %.1f%% is below threshold %d%%, skipping",
-                    config.entity_id,
-                    tilt_change,
-                    config.minimum_tilt_change,
-                )
-                return False
-
-        LOGGER.debug(
-            "Setting tilt for %s to %.1f%% (angle: %.1f°, inverted: %s)",
-            config.entity_id,
-            tilt_percent,
-            calculation.slat_angle_deg,
-            config.invert_tilt,
-        )
-
-        await self._set_cover_tilt(config.entity_id, tilt_percent)
-        return True
-
-    def _should_respect_manual_open(
-        self,
-        config: CoverConfig,
-        current_position: int,
-        obstacle_just_cleared: bool,
-    ) -> bool:
-        """Return True if manual-open state should prevent auto-control this cycle.
-
-        Manual-open is bypassed on the first facade hit of the day (to bring down
-        covers raised overnight) and when an obstacle just cleared (same logic for
-        the obstacle-open case).
+        Apply calculated tilt to a cover via the control pipeline.
 
         Args:
             config: The cover configuration.
-            current_position: Current cover position (0-100).
-            obstacle_just_cleared: True if the obstacle threshold was just crossed upward.
+            calculation: The slat calculation result (None if sun below horizon).
 
         Returns:
-            True if auto-control should be skipped to respect the user's manual open.
+            True if an action was taken, False if skipped.
         """
-        if not config.respect_manual_open:
-            return False
-        if self._first_facade_hit_this_cycle or obstacle_just_cleared:
-            return False
-        return current_position >= config.manual_open_threshold
-
-    def _apply_angle_constraints(self, tilt_percent: float, config: CoverConfig) -> float:
-        """Apply per-cover min/max angle bounds in standard (pre-inversion) tilt space.
-
-        The coordinator computes one shared result using group geometry defaults (min=0°,
-        max=90°); per-cover angle constraints are enforced here before inversion.
-
-        Semantic mapping:
-            max_angle_deg → floor on tilt: cover cannot close past max_angle
-            min_angle_deg → ceiling on tilt: cover cannot be more open than min_angle
-
-        Args:
-            tilt_percent: Raw tilt from the calculation result.
-            config: The cover configuration carrying min_angle/max_angle.
-
-        Returns:
-            Tilt percent clamped to the configured angle bounds.
-        """
-        if config.max_angle < 90:
-            tilt_percent = max(tilt_percent, 100.0 * (1.0 - config.max_angle / 90.0))
-        if config.min_angle > 0:
-            tilt_percent = min(tilt_percent, 100.0 * (1.0 - config.min_angle / 90.0))
-        return tilt_percent
-
-    def _effective_min_tilt(self, config: CoverConfig) -> float:
-        """Minimum tilt the integration may set (preserves manual-close invariant).
-
-        Includes the max_angle_deg floor so the no-sun/obstacle path also respects
-        the configured maximum closure angle.
-        """
-        base = float(config.manual_close_threshold) if config.respect_manual_close else 0.0
-        angle_floor = 100.0 * (1.0 - config.max_angle / 90.0) if config.max_angle < 90 else 0.0
-        return max(base, float(config.min_tilt_percent), angle_floor)
-
-    def _is_reflection_protection_active(self, config: CoverConfig) -> bool:
-        """
-        Check if reflection protection should be active now.
-
-        Reflection protection activates automatically when the sun has previously
-        hit the facade during this solar cycle and is now no longer requiring blocking.
-        It deactivates when the sun sets below the horizon (resetting sun_has_hit_facade).
-
-        Args:
-            config: The cover configuration.
-
-        Returns:
-            True if reflection protection is enabled and sun has hit facade this cycle.
-        """
-        if not config.reflection_protection_enabled:
-            return False
-
-        return self._sun_has_hit_facade
-
-    async def _handle_no_sun(self, config: CoverConfig) -> bool:
-        """
-        Handle the case when sun is below horizon or behind facade.
-
-        Args:
-            config: The cover configuration.
-
-        Returns:
-            True if action was taken, False otherwise.
-        """
-        # Respect manual close even in the no-sun path.
-        # If the user closed the slats manually, don't override them when the sun sets.
-        if config.respect_manual_close:
-            current_tilt = self._get_cover_tilt(config.entity_id)
-            if current_tilt is not None and current_tilt < config.manual_close_threshold:
-                LOGGER.debug(
-                    "No sun: cover %s tilt at %.1f%% (below threshold %d%%), respecting manual close",
-                    config.entity_id,
-                    current_tilt,
-                    config.manual_close_threshold,
-                )
-                return False
-
-        # Respect manual open even in the no-sun path.
-        # If the user raised the cover (e.g. to step outside), don't override that position
-        # with a no-sun action such as "open to 100%".
-        if config.respect_manual_open:
-            current_position = self._get_cover_position(config.entity_id)
-            if current_position is not None and current_position >= config.manual_open_threshold:
-                LOGGER.debug(
-                    "No sun: cover %s position at %d%% (at or above threshold %d%%), respecting manual open",
-                    config.entity_id,
-                    current_position,
-                    config.manual_open_threshold,
-                )
-                return False
-
-        # Check reflection protection first
-        if self._is_reflection_protection_active(config):
-            tilt = max(float(config.reflection_protection_min_tilt), self._effective_min_tilt(config))
-            LOGGER.debug(
-                "No sun + reflection protection active for %s, setting min tilt %d%%",
-                config.entity_id,
-                config.reflection_protection_min_tilt,
-            )
-            await self._set_cover_tilt(config.entity_id, tilt)
-            return True
-
-        dispatch: dict[str, Callable[[], Coroutine[None, None, bool]]] = {
-            "keep_last": lambda: self._no_sun_keep_last(config),
-            "open": lambda: self._no_sun_open(config),
-            "close": lambda: self._no_sun_close(config),
-            "set_to_percent": lambda: self._no_sun_set_to_percent(config),
-        }
-
-        handler = dispatch.get(config.no_sun_behavior)
-        if handler is None:
-            LOGGER.warning("Unknown no_sun_behavior: %s", config.no_sun_behavior)
-            return False
-        return await handler()
-
-    async def _no_sun_keep_last(self, config: CoverConfig) -> bool:
-        """No-sun behavior: keep current position unchanged."""
-        LOGGER.debug("No sun, keeping last position for %s", config.entity_id)
-        return False
-
-    async def _no_sun_open(self, config: CoverConfig) -> bool:
-        """No-sun behavior: raise cover to fully open position."""
-        current_position = self._get_cover_position(config.entity_id)
-        if current_position is not None and abs(current_position - 100) > self.POSITION_TOLERANCE_PERCENT:
-            LOGGER.debug("No sun, raising %s to 100%%", config.entity_id)
-            await self._set_cover_position(config.entity_id, 100)
-            await self._wait_for_position(config.entity_id, 100)
-        return True
-
-    async def _no_sun_close(self, config: CoverConfig) -> bool:
-        """No-sun behavior: close slats to effective minimum tilt."""
-        tilt = max(0.0, self._effective_min_tilt(config))
-        LOGGER.debug("No sun, closing %s", config.entity_id)
-        await self._set_cover_tilt(config.entity_id, tilt)
-        return True
-
-    async def _no_sun_set_to_percent(self, config: CoverConfig) -> bool:
-        """No-sun behavior: set tilt to configured no_sun_position."""
-        tilt = max(float(config.no_sun_position), self._effective_min_tilt(config))
-        LOGGER.debug("No sun, setting %s to %d%%", config.entity_id, config.no_sun_position)
-        await self._set_cover_tilt(config.entity_id, tilt)
-        return True
-
-    def _get_cover_position(self, entity_id: str) -> int | None:
-        """
-        Get current position of a cover.
-
-        Args:
-            entity_id: The cover entity ID.
-
-        Returns:
-            Current position (0-100) or None if unavailable.
-        """
-        state = self._hass.states.get(entity_id)
-        if state is None:
-            return None
-
-        position = state.attributes.get(ATTR_CURRENT_POSITION)
-        if position is None:
-            return None
-
-        try:
-            return int(position)
-        except (ValueError, TypeError):
-            return None
-
-    def _get_cover_tilt(self, entity_id: str) -> float | None:
-        """
-        Get current tilt position of a cover.
-
-        Args:
-            entity_id: The cover entity ID.
-
-        Returns:
-            Current tilt (0-100) or None if unavailable.
-        """
-        state = self._hass.states.get(entity_id)
-        if state is None:
-            return None
-
-        tilt = state.attributes.get(ATTR_CURRENT_TILT_POSITION)
-        if tilt is None:
-            return None
-
-        try:
-            return float(tilt)
-        except (ValueError, TypeError):
-            return None
-
-    async def _set_cover_position(self, entity_id: str, position: int) -> None:
-        """
-        Set cover position.
-
-        Args:
-            entity_id: The cover entity ID.
-            position: Target position (0-100).
-        """
-        await self._hass.services.async_call(
-            "cover",
-            SERVICE_SET_COVER_POSITION,
-            {
-                ATTR_ENTITY_ID: entity_id,
-                "position": position,
-            },
-            blocking=True,
+        state = self._get_or_create_state(config.entity_id)
+        ctx = CoverContext(
+            config=config,
+            calculation=calculation,
+            hass=self._hass,
+            state=state,
         )
-
-    async def _set_cover_tilt(self, entity_id: str, tilt: float) -> None:
-        """
-        Set cover tilt position.
-
-        Args:
-            entity_id: The cover entity ID.
-            tilt: Target tilt (0-100).
-        """
-        await self._hass.services.async_call(
-            "cover",
-            SERVICE_SET_COVER_TILT_POSITION,
-            {
-                ATTR_ENTITY_ID: entity_id,
-                "tilt_position": int(round(tilt)),
-            },
-            blocking=True,
-        )
-
-    async def _wait_for_position(
-        self,
-        entity_id: str,
-        target_position: int,
-    ) -> bool:
-        """
-        Wait for cover to reach target position.
-
-        Args:
-            entity_id: The cover entity ID.
-            target_position: Expected position when done.
-
-        Returns:
-            True if position was reached, False on timeout.
-        """
-        elapsed = 0.0
-        interval = 0.5
-
-        while elapsed < self._position_timeout_sec:
-            current = self._get_cover_position(entity_id)
-            if current is not None:
-                if abs(current - target_position) <= self.POSITION_TOLERANCE_PERCENT:
-                    LOGGER.debug(
-                        "Cover %s reached position %d%%",
-                        entity_id,
-                        current,
-                    )
-                    return True
-
-            await asyncio.sleep(interval)
-            elapsed += interval
-
-        LOGGER.warning(
-            "Timeout waiting for %s to reach position %d%%",
-            entity_id,
-            target_position,
-        )
-        return False
+        pipeline = self._build_pipeline()
+        return await pipeline.run(ctx)
 
     async def apply_to_all_covers(
         self,
@@ -576,7 +245,7 @@ class CoverController:
             calculation: The slat calculation result.
 
         Returns:
-            Dictionary mapping entity_id to whether tilt was applied.
+            Dictionary mapping entity_id to whether an action was taken.
         """
         results: dict[str, bool] = {}
 
