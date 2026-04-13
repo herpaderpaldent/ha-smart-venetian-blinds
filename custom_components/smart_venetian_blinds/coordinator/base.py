@@ -143,27 +143,6 @@ class SmartVenetianBlindsDataUpdateCoordinator(DataUpdateCoordinator[SlatCalcula
             result,
         )
 
-        # Update sun_has_hit_facade tracking
-        state = self.config_entry.runtime_data.state
-        if result is None:
-            # Sun below horizon: reset facade-hit flag so reflection protection deactivates.
-            # Do NOT reset no_sun_action_applied here — the sun entity keeps firing updates
-            # even after sunset (azimuth/elevation still change), so resetting here would
-            # cause _handle_no_sun() to run on every update instead of once per no-sun period.
-            # The reset happens when the sun re-appears on the facade (branch below).
-            state.sun_has_hit_facade = False
-        elif not result.sun_is_behind_facade:
-            if not state.sun_has_hit_facade:
-                # First time sun hits this facade today (transition night→day).
-                # Signal the controller to bypass the manual-open check for this cycle
-                # so that covers raised overnight by no_sun_behavior="open" are driven
-                # back down to their working position.
-                state.is_first_facade_hit = True
-            # Sun is on facade (even at angle 0°): mark as hit
-            state.sun_has_hit_facade = True
-            state.no_sun_action_applied = False
-        # else: sun behind facade, leave unchanged (preserves True after sun passes)
-
         return result
 
     def trigger_update(self) -> None:

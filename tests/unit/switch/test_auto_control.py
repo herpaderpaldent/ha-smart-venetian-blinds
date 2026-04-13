@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from custom_components.smart_venetian_blinds.coordinator.state import GroupState
+from custom_components.smart_venetian_blinds.cover_control.context import CoverTrackingState
 from custom_components.smart_venetian_blinds.data import SmartVenetianBlindsData
 from custom_components.smart_venetian_blinds.switch.auto_control import AutoControlSwitch
 
@@ -51,22 +51,15 @@ class TestAutoControlTurnOn:
 
     @pytest.mark.asyncio
     async def test_turn_on_resets_state_for_fresh_start(self) -> None:
-        """Turning on resets sun_has_hit_facade, no_sun_action_applied, and throttle."""
-        state = GroupState(
-            auto_control_enabled=False,
-            sun_has_hit_facade=True,
-            no_sun_action_applied=True,
-            last_applied_angle=45.0,
-            last_applied_time=datetime(2024, 1, 15, 12, 0, 0),
-        )
+        """Turning on resets cover_states and throttle."""
+        state = GroupState(auto_control_enabled=False, last_applied_angle=45.0)
+        state.cover_states["cover.test"] = CoverTrackingState(exit_paused=True, in_no_sun=True)
         switch = _make_switch(state)
 
         await switch.async_turn_on()
 
-        assert state.sun_has_hit_facade is False
-        assert state.no_sun_action_applied is False
+        assert state.cover_states == {}
         assert state.last_applied_angle is None
-        assert state.last_applied_time is None
 
     @pytest.mark.asyncio
     async def test_turn_on_triggers_coordinator_update(self) -> None:

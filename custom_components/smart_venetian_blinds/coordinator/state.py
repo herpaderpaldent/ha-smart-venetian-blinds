@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 import homeassistant.util.dt as dt_util
 
 if TYPE_CHECKING:
+    from custom_components.smart_venetian_blinds.cover_control.context import CoverTrackingState
     from custom_components.smart_venetian_blinds.sun.math import SlatCalculationResult, SunPosition
 
 
@@ -38,25 +39,11 @@ class GroupState:
     # Auto control state (per group)
     auto_control_enabled: bool = True
 
-    # Whether the sun has actively hit the facade during this solar cycle
-    sun_has_hit_facade: bool = False
+    # Per-cover persistent tracking state (entity_id -> CoverTrackingState).
+    # Holds exit_paused and in_no_sun flags managed by the control pipeline.
+    cover_states: dict[str, CoverTrackingState] = field(default_factory=dict)
 
-    # True only on the very first calculation where the sun transitions from
-    # not-hitting to hitting the facade.  Cleared after covers are applied so
-    # the manual-open check resumes for all subsequent updates that day.
-    # This lets the integration drive covers back down at sunrise even when
-    # they were raised to 100 % overnight by no_sun_behavior="open".
-    is_first_facade_hit: bool = False
-
-    # Whether the no-sun action (open or reflection protection) has already been applied
-    # this no-sun period. Resets when the sun starts hitting the facade again.
-    no_sun_action_applied: bool = False
-
-    # Tracks which cover entity IDs were in obstacle-blocked state last cycle.
-    # Shared with CoverController so obstacle_just_cleared works across controller instances.
-    obstacle_was_blocking: set[str] = field(default_factory=set)
-
-    # Cover states for manual close detection (entity_id -> last known position)
+    # Cover positions last seen (entity_id -> position %)
     cover_positions: dict[str, float] = field(default_factory=dict)
 
     def should_apply(
@@ -102,12 +89,9 @@ class GroupState:
     def reset_for_fresh_start(self) -> None:
         """Reset state to behave as if freshly initialized.
 
-        Clears sun_has_hit_facade, is_first_facade_hit, no_sun_action_applied, and throttle
-        state so the next apply_cover_tilts call fully re-evaluates drive-then-tilt.
+        Clears per-cover tracking state and throttle so the next
+        apply_cover_tilts call fully re-evaluates drive-then-tilt.
         """
-        self.sun_has_hit_facade = False
-        self.is_first_facade_hit = False
-        self.no_sun_action_applied = False
-        self.obstacle_was_blocking.clear()
+        self.cover_states.clear()
         self.last_applied_angle = None
         self.last_applied_time = None
