@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from custom_components.smart_venetian_blinds.const import PARALLEL_UPDATES as PARALLEL_UPDATES
 
 from .auto_control import AutoControlSwitch
+from .exit_mode import ExitModeSwitch
 
 if TYPE_CHECKING:
     from custom_components.smart_venetian_blinds.data import SmartVenetianBlindsConfigEntry
@@ -22,8 +23,7 @@ async def async_setup_entry(
     """Set up the switch platform."""
     coordinator = entry.runtime_data.coordinator
 
-    async_add_entities(
-        [
-            AutoControlSwitch(coordinator),
-        ]
-    )
+    entities: list[AutoControlSwitch | ExitModeSwitch] = [AutoControlSwitch(coordinator)]
+    entities.extend(ExitModeSwitch(coordinator, subentry) for subentry in entry.subentries.values())
+
+    async_add_entities(entities)

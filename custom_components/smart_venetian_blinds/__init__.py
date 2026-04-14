@@ -19,10 +19,19 @@ from homeassistant.const import Platform
 import homeassistant.helpers.config_validation as cv
 from homeassistant.loader import async_get_loaded_integration
 
-from .const import CONF_POSITION_TIMEOUT, DEFAULT_POSITION_TIMEOUT, DOMAIN, LOGGER
+from .const import (
+    CONF_COVER_ENTITY,
+    CONF_POSITION_SETTLING_DELAY,
+    CONF_POSITION_TIMEOUT,
+    DEFAULT_POSITION_SETTLING_DELAY,
+    DEFAULT_POSITION_TIMEOUT,
+    DOMAIN,
+    LOGGER,
+)
 from .coordinator import SmartVenetianBlindsDataUpdateCoordinator
 from .coordinator.state import GroupState
 from .cover_control import CoverController
+from .cover_control.context import CoverTrackingState
 from .data import SmartVenetianBlindsData
 from .service_actions import async_setup_services
 from .sun import SunDataProvider, SunStateListener
@@ -47,6 +56,7 @@ def _create_controller(hass: HomeAssistant, entry: SmartVenetianBlindsConfigEntr
     return CoverController(
         hass,
         position_timeout_sec=entry.options.get(CONF_POSITION_TIMEOUT, DEFAULT_POSITION_TIMEOUT),
+        settling_delay_sec=entry.options.get(CONF_POSITION_SETTLING_DELAY, DEFAULT_POSITION_SETTLING_DELAY),
         cover_states=state.cover_states,
     )
 
@@ -94,6 +104,22 @@ async def async_setup_entry(
 
     # Perform initial calculation
     await coordinator.async_config_entry_first_refresh()
+
+    # Bug 1 fix: if the sun is currently below the horizon (or unknown), pre-initialize
+    # all cover states with in_no_sun=True so the first sunrise triggers the
+    # in_no_sun→False transition correctly and bypasses exit detection.
+    sun_position = sun_provider.get_sun_position()
+    if sun_position is None or sun_position.elevation_deg <= 0:
+        state = entry.runtime_data.state
+        for subentry in entry.subentries.values():
+            entity_id = subentry.data.get(CONF_COVER_ENTITY)
+            if entity_id and entity_id not in state.cover_states:
+                state.cover_states[entity_id] = CoverTrackingState(in_no_sun=True)
+        LOGGER.debug(
+            "Sun below horizon at startup for group '%s': initialized %d cover(s) with in_no_sun=True",
+            entry.title,
+            len(entry.subentries),
+        )
 
     # Create async callback for applying cover tilts
     async def apply_cover_tilts() -> None:

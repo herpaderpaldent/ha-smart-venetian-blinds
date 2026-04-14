@@ -161,12 +161,14 @@
         "data": {
           "change_threshold_deg": "Change threshold",
           "min_update_interval_sec": "Minimum update interval",
-          "position_timeout_sec": "Position timeout"
+          "position_timeout_sec": "Position timeout",
+          "position_settling_delay_sec": "Position settling delay"
         },
         "data_description": {
           "change_threshold_deg": "Minimum angle change (in degrees) to trigger an update",
           "min_update_interval_sec": "Minimum time (in seconds) between cover updates",
-          "position_timeout_sec": "Maximum time (in seconds) to wait for a cover to reach its drive position before applying tilt. Increase this for slow covers."
+          "position_timeout_sec": "Maximum time (in seconds) to wait for a cover to reach its drive position before applying tilt. Increase this for slow covers.",
+          "position_settling_delay_sec": "Extra wait time (in seconds) after the cover reports reaching its drive position before applying tilt. Use this if your cover device reports the target position before the motor has fully stopped."
         }
       }
     }
@@ -194,6 +196,9 @@
     "switch": {
       "auto_control": {
         "name": "Auto Control"
+      },
+      "exit_paused": {
+        "name": "Daily Pause"
       }
     }
   },

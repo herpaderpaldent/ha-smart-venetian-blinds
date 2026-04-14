@@ -161,12 +161,14 @@
         "data": {
           "change_threshold_deg": "Änderungsschwellenwert",
           "min_update_interval_sec": "Minimales Update-Intervall",
-          "position_timeout_sec": "Positions-Timeout"
+          "position_timeout_sec": "Positions-Timeout",
+          "position_settling_delay_sec": "Einschwingverzögerung"
         },
         "data_description": {
           "change_threshold_deg": "Minimale Winkeländerung (in Grad), um ein Update auszulösen",
           "min_update_interval_sec": "Minimale Zeit (in Sekunden) zwischen Abdeckungs-Updates",
-          "position_timeout_sec": "Maximale Wartezeit (in Sekunden) bis die Abdeckung ihre Fahrposition erreicht, bevor die Neigung angewendet wird. Für langsame Abdeckungen erhöhen."
+          "position_timeout_sec": "Maximale Wartezeit (in Sekunden) bis die Abdeckung ihre Fahrposition erreicht, bevor die Neigung angewendet wird. Für langsame Abdeckungen erhöhen.",
+          "position_settling_delay_sec": "Zusätzliche Wartezeit (in Sekunden) nachdem die Abdeckung ihre Fahrposition gemeldet hat, bevor die Neigung angewendet wird. Nutzen, wenn das Gerät die Zielposition meldet, bevor der Motor vollständig gestoppt hat."
         }
       }
     }
@@ -194,6 +196,9 @@
     "switch": {
       "auto_control": {
         "name": "Automatische Steuerung"
+      },
+      "exit_paused": {
+        "name": "Tages-Pause"
       }
     }
   },
