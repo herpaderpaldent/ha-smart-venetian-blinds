@@ -40,6 +40,14 @@ class CoverTrackingState:
     Cleared when the sun returns to the facade.
     """
 
+    resuming_from_exit: bool = False
+    """
+    Set to True by ExitModeSwitch.async_turn_off when the user manually deactivates
+    exit mode. Signals ExitDetectionPipe to skip its position check for exactly one
+    pipeline run so the cover can drive back down from 100% without immediately
+    re-triggering exit detection. Automatically reset by ExitDetectionPipe.
+    """
+
 
 @dataclass
 class CoverContext:
