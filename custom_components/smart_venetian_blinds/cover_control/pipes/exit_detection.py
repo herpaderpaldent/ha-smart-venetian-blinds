@@ -39,6 +39,17 @@ class ExitDetectionPipe:
             )
             return await call_next()
 
+        if ctx.state.resuming_from_exit:
+            # User just manually deactivated exit mode via the Daily Pause switch.
+            # Skip detection for this one cycle so the cover can drive back down
+            # from 100% before ExitDetectionPipe would re-lock it.
+            ctx.state.resuming_from_exit = False
+            LOGGER.debug(
+                "Cover %s: resuming from exit pause, bypassing exit detection this cycle",
+                ctx.config.entity_id,
+            )
+            return await call_next()
+
         state = ctx.hass.states.get(ctx.config.entity_id)
         if state is None:
             return await call_next()

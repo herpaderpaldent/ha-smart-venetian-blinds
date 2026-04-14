@@ -37,12 +37,15 @@ class ExitModeSwitch(CoordinatorEntity[SmartVenetianBlindsDataUpdateCoordinator]
     When turned ON: the cover is retracted to 100% and the pipeline stops
     applying automatic tilt until the switch is turned OFF again.
 
-    When turned OFF: exit mode is cleared and the pipeline immediately
-    drives the cover back to its calculated position and tilt.
+    When turned OFF: exit_paused is cleared and resuming_from_exit is set so
+    ExitDetectionPipe skips its check for one cycle. The full pipeline then
+    runs normally — PositionDrivePipe drives the cover to drive_position,
+    waits for it to arrive, and TiltPipe applies the calculated angle.
+    All other guards (sleep, no-sun, obstacle) still apply.
     """
 
     _attr_attribution = ATTRIBUTION
-    _attr_has_entity_name = True
+    _attr_has_entity_name = False
     entity_description = EXIT_MODE_DESCRIPTION
 
     def __init__(
@@ -53,9 +56,11 @@ class ExitModeSwitch(CoordinatorEntity[SmartVenetianBlindsDataUpdateCoordinator]
         """Initialize the exit mode switch for a single cover."""
         super().__init__(coordinator)
         self._cover_entity_id: str = subentry.data[CONF_COVER_ENTITY]
+        self._subentry = subentry
         cover_name: str = subentry.data.get(CONF_COVER_NAME, self._cover_entity_id)
         entry = coordinator.config_entry
         self._attr_unique_id = f"{entry.entry_id}_{subentry.subentry_id}_exit_paused"
+        self._attr_name = cover_name
         self.entity_id = f"switch.{slugify_name(cover_name)}_exit_paused"
         self._attr_device_info = create_window_group_device_info(entry)
 
@@ -83,11 +88,19 @@ class ExitModeSwitch(CoordinatorEntity[SmartVenetianBlindsDataUpdateCoordinator]
         )
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        """Deactivate exit mode: resume pipeline and immediately apply tilt."""
+        """Deactivate exit mode: set resuming flag and run the full pipeline.
+
+        Sets resuming_from_exit=True so ExitDetectionPipe skips its position check
+        for exactly one cycle. The pipeline then drives the cover to drive_position
+        via PositionDrivePipe before applying tilt — all other guards still apply.
+        """
         runtime_data = self.coordinator.config_entry.runtime_data
         cover_states = runtime_data.state.cover_states
-        if self._cover_entity_id in cover_states:
-            cover_states[self._cover_entity_id].exit_paused = False
+        if self._cover_entity_id not in cover_states:
+            cover_states[self._cover_entity_id] = CoverTrackingState()
+        cover_state = cover_states[self._cover_entity_id]
+        cover_state.exit_paused = False
+        cover_state.resuming_from_exit = True
         self.async_write_ha_state()
         LOGGER.debug("Exit mode deactivated for cover %s, resuming tracking", self._cover_entity_id)
         if runtime_data.apply_cover_tilts is not None:
