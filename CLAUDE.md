@@ -40,6 +40,30 @@ script/test --cov-html    # With coverage report
 
 **Logs:** Live in terminal running `./script/develop`, or in `config/home-assistant.log`
 
+## Release Process
+
+Before creating a version tag, always follow these steps in order:
+
+```bash
+# 1. Ensure all tests and checks pass
+script/check
+script/test
+
+# 2. Regenerate behavior diagrams (matplotlib SVGs are non-deterministic)
+#    and commit any changes BEFORE tagging
+python3 script/visualize
+git add docs/images/
+git diff --cached --quiet || git commit -m "chore: regenerate behavior diagrams"
+
+# 3. Bump version in manifest.json, commit, push, open PR, merge
+
+# 4. Tag (no v prefix — ever)
+git tag 0.7.2
+git push origin 0.7.2
+```
+
+**Why visualize before tagging?** The `update-diagrams` GitHub Actions workflow is `workflow_dispatch` only (not auto-triggered). Auto-triggering on push to main created bot PRs that GitHub blocks from running CI, causing stuck PRs that can never auto-merge. Run `script/visualize` locally instead.
+
 ## Architecture
 
 ### Data Flow

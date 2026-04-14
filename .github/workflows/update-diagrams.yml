@@ -1,13 +1,13 @@
 name: Update Behavior Diagrams
 
+# Run manually (e.g. before a release tag) to regenerate docs/images/ SVGs and
+# open a PR with the result. Intentionally NOT triggered automatically on push
+# to main — GitHub blocks CI on bot-created PRs (GITHUB_TOKEN), which means
+# auto-created PRs can never satisfy required status checks and get stuck.
+#
+# Release process: run `script/visualize` locally, commit any SVG changes, then tag.
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "custom_components/smart_venetian_blinds/**"
-      - "script/visualize"
-      - "requirements_visualize.txt"
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -50,8 +50,7 @@ jobs:
             --base main \
             --head "$BRANCH" \
             --title "chore: regenerate behavior diagrams" \
-            --body "Automated diagram update after changes to \`main\`. Auto-merges when CI passes." \
+            --body "Diagram update triggered manually via workflow_dispatch." \
             --label "chore" || true
-          gh pr merge "$BRANCH" --squash --auto --delete-branch
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
