@@ -58,9 +58,10 @@ custom_components/smart_venetian_blinds/
 ├── sensor/                  # Sensor platform (slat angle, sun position)
 │   ├── __init__.py          # Platform setup
 │   └── slat_sensors.py      # Slat angle and sun position sensor entities
-├── switch/                  # Switch platform (auto_control toggle)
+├── switch/                  # Switch platform (auto_control toggle, per-cover exit mode)
 │   ├── __init__.py          # Platform setup
-│   └── auto_control.py      # Auto control switch entity
+│   ├── auto_control.py      # Auto control switch entity (per group)
+│   └── exit_mode.py         # Daily pause switch entity (per cover)
 ├── service_actions/         # Service action implementations
 │   ├── __init__.py
 │   └── apply_now.py         # Force-apply current calculation to covers

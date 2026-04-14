@@ -16,9 +16,10 @@ A Home Assistant custom integration for automatic sun-position-driven venetian b
 - **Per-window configuration** with facade azimuth and slat geometry
 - **Multiple covers per window group** sharing the same facade orientation
 - **Manual override detection** - won't disturb manually closed blinds
+- **Daily Pause switch** per cover - manually pause and retract a cover, resume with one tap
 - **Reflection protection** - prevents glare from reflected light (balconies/terraces)
 - **Minimum tilt floor** - set a lower bound so covers never go below a configured openness
-- **Throttling controls** to reduce motor wear
+- **Throttling controls** to reduce motor wear, including a configurable settling delay after position drive
 
 ## Quick Start
 
@@ -121,14 +122,22 @@ Sun Entity Changes -> Sun Listener -> Coordinator -> Cover Controller -> Cover E
 
 ## Entities Created
 
-For each window group:
+For each **window group**:
 
 | Entity | Description |
 |--------|-------------|
-| `switch.<group>_auto_control` | Enable/disable automatic control |
-| `sensor.<group>_slat_angle` | Calculated optimal angle (degrees) |
+| `switch.<group>_auto_control` | Enable/disable automatic control for the whole group |
+| `sensor.<group>_slat_angle` | Calculated optimal slat angle (degrees) |
 | `sensor.<group>_slat_tilt` | Calculated optimal tilt (percent) |
-| `sensor.<group>_profile_angle` | Current profile angle (diagnostic) |
+| `sensor.<group>_profile_angle` | Current profile angle — diagnostic, disabled by default |
+| `number.<group>_slat_width` | Slat width setting (mm) |
+| `number.<group>_slat_spacing` | Slat spacing setting (mm) |
+
+For each **cover** added to a group:
+
+| Entity | Description |
+|--------|-------------|
+| `switch.<cover>_exit_paused` | **Daily Pause** — turn ON to retract cover to 100% and pause tracking; turn OFF to resume immediately |
 
 ## Troubleshooting
 

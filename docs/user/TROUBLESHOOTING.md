@@ -153,13 +153,54 @@ Geometry Ratio (d/L): {{ (slat_spacing / slat_width)|round(3) }}
 - If Geometry Ratio > 1, sun penetration is physically unavoidable at some angles
 - Compare "Slat Tilt" sensor vs "Cover Tilt" - if different, the minimum threshold may be blocking updates
 
-## Quick Diagnostic Checklist
+## Cover Stays at 100% (Raised) All Day
+
+If a cover does not drive down after sunrise — especially after a Home Assistant restart — this is usually caused by one of two things:
+
+### Exit Detection After Restart
+
+The integration tracks an in-memory "no-sun" state per cover. After a restart, this state is lost. If your covers were raised to 100% overnight (by the `no_sun_behavior = "open"` setting) and HA restarts after sunrise, the cover at 100% can trigger exit detection and pause tracking for the whole day.
+
+**Since version 0.7.2** this is handled automatically: if the sun is below the horizon at startup, all covers are initialized with `in_no_sun = True` so the first sunrise correctly unlocks them.
+
+If you still see the issue, check:
+- Whether the integration was running during the most recent restart
+- The `auto_control` switch is ON for the group
+
+### Daily Pause Switch (Manual Override)
+
+Each cover has a **Daily Pause** switch (`switch.<cover>_exit_paused`). If this is **ON**, the cover is intentionally paused:
+
+- Turning it **ON** retracts the cover to 100% and suspends automatic tracking
+- Turning it **OFF** immediately resumes tracking and drives the cover back to its calculated position
+
+Check the entity in Settings → Devices & Services or in the Home Assistant UI before assuming there is a bug.
+
+---
+
+## Cover Tilts Before It Has Fully Moved to Position
+
+Some cover devices report the target position before their motor has physically finished travelling. This causes the tilt command to arrive mid-movement and the slats to end up at the wrong angle.
+
+**Fix:** Increase the **Position Settling Delay** in the integration options (group-level):
+
+- Default: 5 seconds
+- Range: 0–30 seconds
+- Location: Settings → Devices & Services → Smart Venetian Blinds → (your group) → Configure
+
+Set this to 8–15 seconds for covers that report position early. This is an extra wait *after* the cover reports reaching its target, before the tilt command is sent.
+
+---
+
+
 
 - [ ] Measured slat width with ruler (mm)
 - [ ] Measured slat spacing bottom-to-bottom (mm)
 - [ ] Verified facade azimuth with compass
 - [ ] Checked minimum tilt change threshold (try 2%)
 - [ ] Considered minimum tilt floor if covers should never fully close
+- [ ] Checked `switch.<cover>_exit_paused` (Daily Pause) is OFF
+- [ ] Checked `switch.<group>_auto_control` is ON
 - [ ] Ran diagnostic template during sunlight leakage
 - [ ] Compared calculated tilt vs. manually-working tilt
 
