@@ -180,11 +180,13 @@ class CoverController:
         hass: HomeAssistant,
         *,
         position_timeout_sec: int = DEFAULT_POSITION_TIMEOUT,
+        settling_delay_sec: int = 5,
         cover_states: dict[str, CoverTrackingState] | None = None,
     ) -> None:
         """Initialize the cover controller."""
         self._hass = hass
         self._position_timeout_sec = position_timeout_sec
+        self._settling_delay_sec = settling_delay_sec
         self._cover_states = cover_states if cover_states is not None else {}
 
     def _get_or_create_state(self, entity_id: str) -> CoverTrackingState:
@@ -202,7 +204,7 @@ class CoverController:
                 ExitPausedCheckPipe(),
                 NoSunPipe(self._position_timeout_sec),
                 ExitDetectionPipe(),
-                PositionDrivePipe(self._position_timeout_sec),
+                PositionDrivePipe(self._position_timeout_sec, self._settling_delay_sec),
                 TiltPipe(),
             ]
         )

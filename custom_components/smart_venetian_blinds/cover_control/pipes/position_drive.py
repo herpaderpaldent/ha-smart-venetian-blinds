@@ -21,13 +21,19 @@ class PositionDrivePipe:
 
     Always ensures the cover is at drive_position before TiltPipe applies
     the calculated angle. This is the core "drive-then-tilt" invariant.
+
+    After the cover reports reaching the target position, an additional
+    settling delay is observed before proceeding. This prevents premature
+    tilt commands when a device reports the target position before its
+    motor has physically finished travelling.
     """
 
     POSITION_TOLERANCE_PERCENT = 2
 
-    def __init__(self, position_timeout_sec: int) -> None:
-        """Initialize with position timeout."""
+    def __init__(self, position_timeout_sec: int, settling_delay_sec: int = 5) -> None:
+        """Initialize with position timeout and optional post-drive settling delay."""
         self._position_timeout_sec = position_timeout_sec
+        self._settling_delay_sec = settling_delay_sec
 
     async def handle(self, ctx: CoverContext, call_next: Callable[[], Awaitable[bool]]) -> bool:
         """Handle pipe step."""
@@ -61,6 +67,13 @@ class PositionDrivePipe:
                 blocking=True,
             )
             await self._wait_for_position(ctx, ctx.config.drive_position)
+            if self._settling_delay_sec > 0:
+                LOGGER.debug(
+                    "Cover %s: settling delay %ds after position drive",
+                    ctx.config.entity_id,
+                    self._settling_delay_sec,
+                )
+                await asyncio.sleep(self._settling_delay_sec)
 
         return await call_next()
 
