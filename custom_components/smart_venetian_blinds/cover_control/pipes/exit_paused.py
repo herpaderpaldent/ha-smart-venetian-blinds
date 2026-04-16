@@ -25,6 +25,8 @@ class ExitPausedCheckPipe:
     resumes immediately.
 
     exit_paused is also cleared when the cover enters the no-sun period (NoSunPipe).
+    This pipe intentionally runs AFTER NoSunPipe so that no-sun behavior always
+    executes regardless of exit-paused state.
     """
 
     async def handle(self, ctx: CoverContext, call_next: Callable[[], Awaitable[bool]]) -> bool:
