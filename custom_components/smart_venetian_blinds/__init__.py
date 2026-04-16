@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING
 
 from homeassistant.const import Platform
 import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers.event import async_track_time_change
 from homeassistant.loader import async_get_loaded_integration
 
 from .const import (
@@ -175,6 +176,23 @@ async def async_setup_entry(
 
     # Store cleanup callback
     entry.async_on_unload(sun_listener.stop)
+
+    # Reset exit_paused for all covers at midnight so each day starts clean.
+    # This prevents permanent deadlocks where exit_paused=True blocks NoSunPipe
+    # from clearing itself when the sun leaves the facade late in the afternoon.
+    async def _reset_exit_paused_at_midnight(_now: object) -> None:
+        state = entry.runtime_data.state
+        flagged = [eid for eid, s in state.cover_states.items() if s.exit_paused]
+        state.reset_exit_paused()
+        if flagged:
+            LOGGER.debug(
+                "Midnight reset: cleared exit_paused for %d cover(s) in group '%s': %s",
+                len(flagged),
+                entry.title,
+                flagged,
+            )
+
+    entry.async_on_unload(async_track_time_change(hass, _reset_exit_paused_at_midnight, hour=0, minute=0, second=0))
 
     # Forward entry setup to platforms
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)

@@ -24,9 +24,9 @@ class ExitPausedCheckPipe:
     the user has lowered the cover again, so exit_paused is cleared and tracking
     resumes immediately.
 
-    exit_paused is also cleared when the cover enters the no-sun period (NoSunPipe).
-    This pipe intentionally runs AFTER NoSunPipe so that no-sun behavior always
-    executes regardless of exit-paused state.
+    exit_paused is also cleared at midnight by the integration-level midnight reset,
+    ensuring each new day starts with a clean state even if the cover was stuck in
+    exit-paused at the end of the previous day.
     """
 
     async def handle(self, ctx: CoverContext, call_next: Callable[[], Awaitable[bool]]) -> bool:

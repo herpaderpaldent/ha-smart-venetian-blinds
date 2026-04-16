@@ -21,10 +21,9 @@ class SleepProtectionPipe:
     persistent state. If the tilt is below the manual_close_threshold, we assume
     the user manually closed the slats and skip everything for this cycle.
 
-    This pipe runs after NoSunPipe so that no-sun behavior (e.g. raising the cover)
-    is never blocked by sleep protection. It runs before PositionDrivePipe so that
-    the position drive cannot reset tilt to 0% and cause a false trigger on the
-    same cycle.
+    This pipe runs before NoSunPipe and PositionDrivePipe so that neither
+    no-sun behavior (e.g. raising the cover) nor the position drive can disturb
+    a sleeping user.
     """
 
     async def handle(self, ctx: CoverContext, call_next: Callable[[], Awaitable[bool]]) -> bool:

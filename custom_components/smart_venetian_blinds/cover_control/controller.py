@@ -200,9 +200,9 @@ class CoverController:
         return Pipeline(
             [
                 EnabledPipe(),
-                NoSunPipe(self._position_timeout_sec),
                 SleepProtectionPipe(),
                 ExitPausedCheckPipe(),
+                NoSunPipe(self._position_timeout_sec),
                 ExitDetectionPipe(),
                 PositionDrivePipe(self._position_timeout_sec, self._settling_delay_sec),
                 TiltPipe(),
