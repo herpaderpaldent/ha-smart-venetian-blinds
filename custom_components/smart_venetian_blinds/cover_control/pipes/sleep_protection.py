@@ -24,6 +24,12 @@ class SleepProtectionPipe:
     This pipe runs before NoSunPipe and PositionDrivePipe so that neither
     no-sun behavior (e.g. raising the cover) nor the position drive can disturb
     a sleeping user.
+
+    Fail-safe: when ``respect_manual_close`` is enabled and the cover state or
+    tilt value is temporarily unavailable (entity not yet loaded, device not
+    reporting tilt), the pipe blocks rather than passing through.  This prevents
+    NoSunPipe from raising the cover to 100% during an HA restart race condition
+    or while the motor is moving and tilt is transiently None.
     """
 
     async def handle(self, ctx: CoverContext, call_next: Callable[[], Awaitable[bool]]) -> bool:
@@ -33,16 +39,29 @@ class SleepProtectionPipe:
 
         state = ctx.hass.states.get(ctx.config.entity_id)
         if state is None:
-            return await call_next()
+            LOGGER.debug(
+                "Cover %s: state unavailable, sleep protection blocking as fail-safe",
+                ctx.config.entity_id,
+            )
+            return False
 
         raw_tilt = state.attributes.get(ATTR_CURRENT_TILT_POSITION)
         if raw_tilt is None:
-            return await call_next()
+            LOGGER.debug(
+                "Cover %s: tilt position unavailable, sleep protection blocking as fail-safe",
+                ctx.config.entity_id,
+            )
+            return False
 
         try:
             current_tilt = float(raw_tilt)
         except (ValueError, TypeError):
-            return await call_next()
+            LOGGER.debug(
+                "Cover %s: invalid tilt value %r, sleep protection blocking as fail-safe",
+                ctx.config.entity_id,
+                raw_tilt,
+            )
+            return False
 
         if current_tilt < ctx.config.manual_close_threshold:
             LOGGER.debug(

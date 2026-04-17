@@ -106,18 +106,28 @@ async def async_setup_entry(
     # Perform initial calculation
     await coordinator.async_config_entry_first_refresh()
 
-    # Bug 1 fix: if the sun is currently below the horizon (or unknown), pre-initialize
-    # all cover states with in_no_sun=True so the first sunrise triggers the
-    # in_no_sun→False transition correctly and bypasses exit detection.
-    sun_position = sun_provider.get_sun_position()
-    if sun_position is None or sun_position.elevation_deg <= 0:
+    # Pre-initialize in_no_sun=True for all covers when the sun is not on the facade
+    # at startup. This prevents NoSunPipe from firing the no-sun action (e.g. raising
+    # to 100%) on the very first cycle before any cover entity state has loaded.
+    #
+    # Two no-sun cases to handle:
+    # 1. Sun below horizon (elevation <= 0, coordinator.data is None)
+    # 2. Sun above horizon but behind this facade (sun_is_behind_facade=True)
+    _startup_sun = sun_provider.get_sun_position()
+    _startup_calc = coordinator.data
+    _is_no_sun_at_startup = (
+        _startup_sun is None
+        or _startup_sun.elevation_deg <= 0
+        or (_startup_calc is not None and _startup_calc.sun_is_behind_facade)
+    )
+    if _is_no_sun_at_startup:
         state = entry.runtime_data.state
         for subentry in entry.subentries.values():
             entity_id = subentry.data.get(CONF_COVER_ENTITY)
             if entity_id and entity_id not in state.cover_states:
                 state.cover_states[entity_id] = CoverTrackingState(in_no_sun=True)
         LOGGER.debug(
-            "Sun below horizon at startup for group '%s': initialized %d cover(s) with in_no_sun=True",
+            "No sun on facade at startup for group '%s': initialized %d cover(s) with in_no_sun=True",
             entry.title,
             len(entry.subentries),
         )
