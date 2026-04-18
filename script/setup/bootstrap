@@ -140,10 +140,9 @@ HA_CORE_BASE_URL="https://raw.githubusercontent.com/home-assistant/core/${HA_VER
 
 log_header "Installing Home Assistant ${HA_VERSION} runtime dependencies"
 mkdir -p "/tmp/homeassistant"
-curl -fsSL "${HA_CORE_BASE_URL}/homeassistant/package_constraints.txt" -o "/tmp/homeassistant/package_constraints.txt"  # constraints for requirements files
-curl -fsSL "${HA_CORE_BASE_URL}/requirements.txt" -o "/tmp/requirements.txt"  # required by requirements_all.txt
-curl -fsSL "${HA_CORE_BASE_URL}/requirements_all.txt" -o "/tmp/requirements_all.txt"
-uv pip install --requirement "/tmp/requirements_all.txt"
+curl -fsSL "${HA_CORE_BASE_URL}/homeassistant/package_constraints.txt" -o "/tmp/homeassistant/package_constraints.txt"  # version constraints
+curl -fsSL "${HA_CORE_BASE_URL}/requirements.txt" -o "/tmp/requirements.txt"  # HA core runtime deps (not all integrations)
+uv pip install --requirement "/tmp/requirements.txt"
 
 log_header "Installing Home Assistant ${HA_VERSION} test dependencies"
 curl -fsSL "${HA_CORE_BASE_URL}/requirements_test_pre_commit.txt" -o "/tmp/requirements_test_pre_commit.txt"  # required by requirements_test.txt
