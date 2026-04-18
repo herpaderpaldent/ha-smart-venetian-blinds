@@ -1,0 +1,415 @@
+#!/usr/bin/env python3
+"""
+Simulate the west-facade cover pipeline for April 14, 2026 (St. Gallen).
+
+Reproduces the incident where both west covers ended up at 0% tilt despite
+min_tilt=42% being configured. Runs the real pipeline with real sun positions
+and full DEBUG logging so every pipe decision is visible.
+
+Usage:
+    python3 script/simulate_west
+
+Requirements:
+    pip install -r requirements_visualize.txt   (astral, matplotlib)
+    -- or just: pip install astral
+"""
+
+from __future__ import annotations
+
+import asyncio
+from datetime import UTC, date, datetime
+import importlib.util
+import logging
+import math
+import os
+from pathlib import Path
+import sys
+import types
+from typing import NamedTuple
+
+# ---------------------------------------------------------------------------
+# Sun position via astral
+# ---------------------------------------------------------------------------
+from astral import LocationInfo
+
+LOCATION = LocationInfo(
+    name="St. Gallen",
+    region="Switzerland",
+    timezone="Europe/Zurich",
+    latitude=47.4227,
+    longitude=9.3731,
+)
+SIM_DATE = date(2026, 4, 14)
+SIM_TZ = LOCATION.tzinfo
+
+# ---------------------------------------------------------------------------
+# Import sun/math.py directly (same trick as script/visualize)
+# ---------------------------------------------------------------------------
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+_math_path = os.path.join(
+    os.path.dirname(__file__), "..", "custom_components", "smart_venetian_blinds", "sun", "math.py"
+)
+_spec = importlib.util.spec_from_file_location("svb_math", _math_path)
+_mod = importlib.util.module_from_spec(_spec)  # type: ignore[arg-type]
+sys.modules["svb_math"] = _mod
+_spec.loader.exec_module(_mod)  # type: ignore[union-attr]
+
+SunPosition = _mod.SunPosition
+calculate_slat_angle = _mod.calculate_slat_angle
+
+# ---------------------------------------------------------------------------
+# Stub homeassistant so pipeline modules import without a real HA install
+# ---------------------------------------------------------------------------
+_ha = types.ModuleType("homeassistant")
+_ha_const = types.ModuleType("homeassistant.const")
+_ha_const.Platform = None  # type: ignore[attr-defined]
+_ha_const.ATTR_ENTITY_ID = "entity_id"  # type: ignore[attr-defined]
+_ha_const.SERVICE_SET_COVER_POSITION = "set_cover_position"  # type: ignore[attr-defined]
+_ha_const.SERVICE_SET_COVER_TILT_POSITION = "set_cover_tilt_position"  # type: ignore[attr-defined]
+_ha_components = types.ModuleType("homeassistant.components")
+_ha_cover = types.ModuleType("homeassistant.components.cover")
+_ha_cover.ATTR_CURRENT_POSITION = "current_position"  # type: ignore[attr-defined]
+_ha_cover.ATTR_CURRENT_TILT_POSITION = "current_tilt_position"  # type: ignore[attr-defined]
+_ha_helpers = types.ModuleType("homeassistant.helpers")
+_ha_cv = types.ModuleType("homeassistant.helpers.config_validation")
+_ha_coordinator = types.ModuleType("homeassistant.helpers.update_coordinator")
+_ha_coordinator.DataUpdateCoordinator = object  # type: ignore[attr-defined]
+_ha_loader = types.ModuleType("homeassistant.loader")
+_ha_loader.async_get_loaded_integration = None  # type: ignore[attr-defined]
+_ha_util = types.ModuleType("homeassistant.util")
+_ha_dt = types.ModuleType("homeassistant.util.dt")
+_ha_core = types.ModuleType("homeassistant.core")
+_ha_core.Event = object  # type: ignore[attr-defined]
+_ha_core.EventStateChangedData = object  # type: ignore[attr-defined]
+_ha_core.HomeAssistant = object  # type: ignore[attr-defined]
+_ha_core.State = object  # type: ignore[attr-defined]
+_ha_core.callback = lambda f: f  # type: ignore[attr-defined]
+for _name, _stub in {
+    "homeassistant": _ha,
+    "homeassistant.const": _ha_const,
+    "homeassistant.components": _ha_components,
+    "homeassistant.components.cover": _ha_cover,
+    "homeassistant.helpers": _ha_helpers,
+    "homeassistant.helpers.config_validation": _ha_cv,
+    "homeassistant.helpers.update_coordinator": _ha_coordinator,
+    "homeassistant.loader": _ha_loader,
+    "homeassistant.util": _ha_util,
+    "homeassistant.util.dt": _ha_dt,
+    "homeassistant.core": _ha_core,
+}.items():
+    sys.modules[_name] = _stub
+
+_svb_root = str(Path(__file__).parent.parent / "custom_components" / "smart_venetian_blinds")
+_svb_pkg = types.ModuleType("custom_components.smart_venetian_blinds")
+_svb_pkg.__path__ = [_svb_root]  # type: ignore[attr-defined]
+_svb_pkg.__package__ = "custom_components.smart_venetian_blinds"
+_svb_const = types.ModuleType("custom_components.smart_venetian_blinds.const")
+
+# Inject constants needed by the pipeline
+_LOGGER = logging.getLogger("smart_venetian_blinds")
+_svb_const.LOGGER = _LOGGER  # type: ignore[attr-defined]
+_svb_const.CONF_COVER_ENABLED = "enabled"  # type: ignore[attr-defined]
+
+import importlib  # noqa: E402
+
+_svb_real_const = importlib.util.spec_from_file_location(
+    "custom_components.smart_venetian_blinds.const",
+    os.path.join(_svb_root, "const.py"),
+)
+# Just pull the values we need directly:
+_const_src = open(os.path.join(_svb_root, "const.py")).read()
+_const_ns: dict = {}
+exec(_const_src.replace("from homeassistant", "# from homeassistant"), _const_ns)  # noqa: S102
+
+for _k, _v in _const_ns.items():
+    if not _k.startswith("__"):
+        setattr(_svb_const, _k, _v)
+_svb_const.LOGGER = _LOGGER  # type: ignore[attr-defined]
+
+sys.modules["custom_components"] = types.ModuleType("custom_components")
+sys.modules["custom_components.smart_venetian_blinds"] = _svb_pkg
+sys.modules["custom_components.smart_venetian_blinds.const"] = _svb_const
+
+# Register sun math under its integration path
+_svb_sun_pkg = types.ModuleType("custom_components.smart_venetian_blinds.sun")
+_svb_sun_pkg.__path__ = [os.path.join(_svb_root, "sun")]  # type: ignore[attr-defined]
+sys.modules["custom_components.smart_venetian_blinds.sun"] = _svb_sun_pkg
+sys.modules["custom_components.smart_venetian_blinds.sun.math"] = _mod
+
+from custom_components.smart_venetian_blinds.cover_control.context import CoverContext, CoverTrackingState  # noqa: E402
+from custom_components.smart_venetian_blinds.cover_control.controller import CoverConfig, Pipeline  # noqa: E402
+from custom_components.smart_venetian_blinds.cover_control.pipes import (  # noqa: E402
+    EnabledPipe,
+    ExitDetectionPipe,
+    ExitPausedCheckPipe,
+    NoSunPipe,
+    PositionDrivePipe,
+    SleepProtectionPipe,
+    TiltPipe,
+)
+
+# ---------------------------------------------------------------------------
+# Configure logging — route integration LOGGER to stdout at DEBUG
+# ---------------------------------------------------------------------------
+_handler = logging.StreamHandler(sys.stdout)
+_handler.setLevel(logging.DEBUG)
+_handler.setFormatter(logging.Formatter("      [%(levelname)s] %(message)s"))
+_LOGGER.addHandler(_handler)
+_LOGGER.setLevel(logging.DEBUG)
+_LOGGER.propagate = False
+
+# ---------------------------------------------------------------------------
+# Mock HA state / services
+# ---------------------------------------------------------------------------
+
+
+class _MockCoverState:
+    def __init__(self, position: float, tilt: float) -> None:
+        self.attributes = {"current_position": position, "current_tilt_position": tilt}
+
+
+class _MockStates:
+    def __init__(self, position: float = 100.0, tilt: float = 100.0) -> None:
+        self.position = position
+        self.tilt = tilt
+
+    def get(self, _entity_id: str) -> _MockCoverState:
+        return _MockCoverState(self.position, self.tilt)
+
+
+class _MockServices:
+    def __init__(self, states: _MockStates) -> None:
+        self._states = states
+
+    async def async_call(self, _domain: str, service: str, data: dict, *, blocking: bool = False) -> None:
+        if service == "set_cover_position":
+            self._states.position = float(data["position"])
+            if self._states.position >= 99.0:
+                self._states.tilt = 100.0
+            elif self._states.position <= 1.0:
+                # Driving to 0% physically resets slats to 0°
+                self._states.tilt = 0.0
+        elif service == "set_cover_tilt_position":
+            self._states.tilt = float(data["tilt_position"])
+
+
+class MockHass:
+    def __init__(self, position: float = 100.0, tilt: float = 100.0) -> None:
+        self.states = _MockStates(position, tilt)
+        self.services = _MockServices(self.states)
+
+
+# ---------------------------------------------------------------------------
+# Sun position helpers
+# ---------------------------------------------------------------------------
+
+
+def _sun_elevation_azimuth(dt_utc: datetime) -> tuple[float, float]:
+    """Return (elevation_deg, azimuth_deg) for St. Gallen at the given UTC datetime."""
+    lat = math.radians(LOCATION.latitude)
+    n = dt_utc.timetuple().tm_yday
+    # Solar declination
+    decl = math.radians(23.45 * math.sin(math.radians(360 / 365 * (n - 80))))
+    # Equation of time (minutes)
+    b = math.radians(360 / 365 * (n - 81))
+    eot = 9.87 * math.sin(2 * b) - 7.53 * math.cos(b) - 1.5 * math.sin(b)
+    # Solar time
+    lon_deg = LOCATION.longitude
+    solar_noon = 12.0 - (lon_deg - 15 * round(lon_deg / 15)) / 15 - eot / 60
+    hour_utc = dt_utc.hour + dt_utc.minute / 60
+    # CEST is UTC+2
+    solar_hour = hour_utc + 2 - solar_noon
+    ha = math.radians(15 * solar_hour)  # hour angle
+    # Elevation
+    sin_el = math.sin(lat) * math.sin(decl) + math.cos(lat) * math.cos(decl) * math.cos(ha)
+    elevation = math.degrees(math.asin(max(-1, min(1, sin_el))))
+    # Azimuth (N=0, E=90, S=180, W=270)
+    cos_az = (math.sin(decl) - math.sin(lat) * sin_el) / (math.cos(lat) * math.cos(math.radians(elevation)))
+    az = math.degrees(math.acos(max(-1, min(1, cos_az))))
+    if solar_hour > 0:
+        az = 360 - az
+    return elevation, az
+
+
+# ---------------------------------------------------------------------------
+# Cover configuration factory
+# ---------------------------------------------------------------------------
+_FACADE_AZIMUTH = 267
+_SLAT_WIDTH = 70
+_SLAT_SPACING = 90
+_SAFETY_MARGIN = 0
+
+
+def _make_config(label: str, **overrides: object) -> CoverConfig:
+    defaults: dict[str, object] = dict(
+        entity_id=f"cover.west_{label}",
+        drive_position=0,
+        min_angle=0,
+        max_angle=90,
+        invert_tilt=False,
+        no_sun_behavior="open",
+        no_sun_position=100,
+        respect_manual_close=True,
+        manual_close_threshold=5,
+        respect_manual_open=True,
+        manual_open_threshold=90,
+        minimum_tilt_change=5,
+        enabled=True,
+        reflection_protection_enabled=False,
+        reflection_protection_min_tilt=30,
+        reflection_protection_start_time="00:00",
+        reflection_protection_end_time="23:59",
+        min_tilt_percent=0,
+        obstacle_elevation_deg=0.0,
+    )
+    defaults.update(overrides)
+    return CoverConfig(**defaults)  # type: ignore[arg-type]
+
+
+COVER_1 = _make_config("cover1", min_tilt_percent=42, obstacle_elevation_deg=17.0)
+COVER_2 = _make_config("cover2", min_tilt_percent=38, obstacle_elevation_deg=0.0)
+
+# ---------------------------------------------------------------------------
+# Simulation
+# ---------------------------------------------------------------------------
+
+
+class StepResult(NamedTuple):
+    time_cest: str
+    elevation: float
+    azimuth: float
+    ratio: float | None
+    calc_tilt: float | None
+    cover_tilt: float
+    cover_position: float
+
+
+async def _simulate_cover(config: CoverConfig, steps: list[datetime]) -> list[StepResult]:
+    hass = MockHass(position=0.0, tilt=100.0)
+    tracking = CoverTrackingState()
+    results: list[StepResult] = []
+
+    sep = "─" * 80
+    print(f"\n{sep}")
+    print(
+        f"  COVER: {config.entity_id}  |  min_tilt={config.min_tilt_percent}%  |  obstacle={config.obstacle_elevation_deg}°"
+    )
+    print(sep)
+
+    for dt_utc in steps:
+        elevation, azimuth = _sun_elevation_azimuth(dt_utc)
+        # CEST = UTC+2
+        cest_hour = dt_utc.hour + 2
+        cest_min = dt_utc.minute
+        time_label = f"{cest_hour:02d}:{cest_min:02d}"
+
+        calculation = None
+        ratio: float | None = None
+        calc_tilt: float | None = None
+
+        if elevation > 0:
+            sun = SunPosition(azimuth_deg=azimuth, elevation_deg=elevation)
+            calculation = calculate_slat_angle(
+                sun=sun,
+                facade_azimuth_deg=_FACADE_AZIMUTH,
+                slat_width_mm=_SLAT_WIDTH,
+                slat_spacing_mm=_SLAT_SPACING,
+                safety_margin_deg=_SAFETY_MARGIN,
+            )
+            if calculation is not None and not calculation.sun_is_behind_facade:
+                omega = calculation.profile_angle_deg
+                cos_omega = math.cos(math.radians(omega))
+                ratio = (_SLAT_SPACING * cos_omega) / _SLAT_WIDTH
+                calc_tilt = calculation.slat_tilt_percent
+
+        ctx = CoverContext(config=config, calculation=calculation, hass=hass, state=tracking)
+        pipeline = Pipeline(
+            [
+                EnabledPipe(),
+                SleepProtectionPipe(),
+                ExitPausedCheckPipe(),
+                NoSunPipe(5),
+                ExitDetectionPipe(),
+                PositionDrivePipe(5, 0),
+                TiltPipe(),
+            ]
+        )
+
+        prefix = f"{time_label} CEST | el={elevation:+5.1f}° az={azimuth:5.1f}°"
+        if ratio is not None:
+            ratio_str = f"ratio={ratio:.3f}"
+            calc_str = f"calc={calc_tilt:5.1f}%"
+        elif calculation is not None and calculation.sun_is_behind_facade:
+            ratio_str = "BEHIND FACADE "
+            calc_str = "             "
+        else:
+            ratio_str = "SUN BELOW HOR."
+            calc_str = "             "
+
+        print(f"\n{prefix} | {ratio_str} | {calc_str}")
+
+        tilt_before = hass.states.tilt
+        pos_before = hass.states.position
+        await pipeline.run(ctx)
+        tilt_after = hass.states.tilt
+        pos_after = hass.states.position
+
+        if abs(tilt_after - tilt_before) > 0.01 or abs(pos_after - pos_before) > 0.01:
+            print(
+                f"      → cover: pos={pos_after:.0f}%  tilt={tilt_after:.1f}%  (was pos={pos_before:.0f}%  tilt={tilt_before:.1f}%)"
+            )
+        else:
+            print(f"      → cover: pos={pos_after:.0f}%  tilt={tilt_after:.1f}%  (no change)")
+
+        results.append(
+            StepResult(
+                time_cest=time_label,
+                elevation=elevation,
+                azimuth=azimuth,
+                ratio=ratio,
+                calc_tilt=calc_tilt,
+                cover_tilt=tilt_after,
+                cover_position=pos_after,
+            )
+        )
+
+    return results
+
+
+def _build_steps() -> list[datetime]:
+    """Build 4-minute UTC steps from 11:00 UTC (13:00 CEST) to 19:00 UTC (21:00 CEST)."""
+    return [datetime(2026, 4, 14, h, m, tzinfo=UTC) for h in range(11, 20) for m in range(0, 60, 4)]
+
+
+async def _main() -> None:
+    steps = _build_steps()
+
+    results1 = await _simulate_cover(COVER_1, steps)
+    results2 = await _simulate_cover(COVER_2, steps)
+
+    # Summary table
+    print("\n\n" + "═" * 100)
+    print("  SUMMARY TABLE — West Facade April 14, 2026")
+    print("═" * 100)
+    print(
+        f"  {'Time':>5}  {'El':>6}  {'Az':>6}  {'Ratio':>7}  {'CalcTilt':>9}  {'Cover1 Tilt':>12}  {'Cover1 Pos':>11}  {'Cover2 Tilt':>12}  {'Cover2 Pos':>11}"
+    )
+    print("─" * 100)
+    for r1, r2 in zip(results1, results2, strict=False):
+        ratio_s = f"{r1.ratio:7.3f}" if r1.ratio is not None else "  behind"
+        calc_s = f"{r1.calc_tilt:8.1f}%" if r1.calc_tilt is not None else "         "
+        flag1 = (
+            " ←!" if r1.cover_tilt < 5 else ("  ↓" if r1.calc_tilt is not None and r1.calc_tilt < r1.cover_tilt else "")
+        )
+        flag2 = " ←!" if r2.cover_tilt < 5 else ""
+        print(
+            f"  {r1.time_cest}  {r1.elevation:+6.1f}°  {r1.azimuth:6.1f}°  {ratio_s}  {calc_s}"
+            f"  {r1.cover_tilt:11.1f}%  {r1.cover_position:10.0f}%"
+            f"  {r2.cover_tilt:11.1f}%  {r2.cover_position:10.0f}%"
+            f"{flag1}{flag2}"
+        )
+
+
+if __name__ == "__main__":
+    asyncio.run(_main())

@@ -53,6 +53,7 @@ from custom_components.smart_venetian_blinds.const import (
 )
 from custom_components.smart_venetian_blinds.cover_control.context import CoverContext, CoverTrackingState
 from custom_components.smart_venetian_blinds.cover_control.pipes import (
+    DrivingCheckPipe,
     EnabledPipe,
     ExitDetectionPipe,
     ExitPausedCheckPipe,
@@ -139,6 +140,7 @@ class Pipeline:
         self,
         pipes: list[
             EnabledPipe
+            | DrivingCheckPipe
             | SleepProtectionPipe
             | ExitPausedCheckPipe
             | NoSunPipe
@@ -200,6 +202,7 @@ class CoverController:
         return Pipeline(
             [
                 EnabledPipe(),
+                DrivingCheckPipe(),
                 SleepProtectionPipe(),
                 ExitPausedCheckPipe(),
                 NoSunPipe(self._position_timeout_sec),
