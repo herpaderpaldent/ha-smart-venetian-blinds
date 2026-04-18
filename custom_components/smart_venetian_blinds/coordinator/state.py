@@ -86,6 +86,15 @@ class GroupState:
         """Reset throttle state to allow immediate application."""
         self.last_applied_time = None
 
+    def reset_exit_paused(self) -> None:
+        """Clear exit_paused for every tracked cover (called at midnight).
+
+        Only exit_paused is reset — in_no_sun and other flags are left intact
+        so the integration does not re-apply no-sun actions unnecessarily.
+        """
+        for cover_state in self.cover_states.values():
+            cover_state.exit_paused = False
+
     def reset_for_fresh_start(self) -> None:
         """Reset state to behave as if freshly initialized.
 
