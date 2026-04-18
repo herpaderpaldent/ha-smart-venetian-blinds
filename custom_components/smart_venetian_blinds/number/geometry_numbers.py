@@ -33,6 +33,7 @@ SLAT_WIDTH_DESCRIPTION = NumberEntityDescription(
     native_step=1,
     mode=NumberMode.BOX,
     entity_category=EntityCategory.CONFIG,
+    icon="mdi:arrow-left-right",
 )
 
 SLAT_SPACING_DESCRIPTION = NumberEntityDescription(
