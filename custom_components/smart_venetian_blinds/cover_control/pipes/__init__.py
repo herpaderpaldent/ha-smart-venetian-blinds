@@ -1,5 +1,6 @@
 """Cover control pipeline pipes."""
 
+from custom_components.smart_venetian_blinds.cover_control.pipes.driving_check import DrivingCheckPipe
 from custom_components.smart_venetian_blinds.cover_control.pipes.enabled import EnabledPipe
 from custom_components.smart_venetian_blinds.cover_control.pipes.exit_detection import ExitDetectionPipe
 from custom_components.smart_venetian_blinds.cover_control.pipes.exit_paused import ExitPausedCheckPipe
@@ -9,6 +10,7 @@ from custom_components.smart_venetian_blinds.cover_control.pipes.sleep_protectio
 from custom_components.smart_venetian_blinds.cover_control.pipes.tilt import TiltPipe
 
 __all__ = [
+    "DrivingCheckPipe",
     "EnabledPipe",
     "ExitDetectionPipe",
     "ExitPausedCheckPipe",

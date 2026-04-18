@@ -1588,3 +1588,140 @@ class TestCoverStatesPersistence:
 
         # No bypass → exit detection fires (position=100% ≥ 90%), tracking is skipped
         assert result is False
+
+
+@pytest.mark.unit
+class TestDrivingCheck:
+    """Tests for DrivingCheckPipe: skip when cover is actively moving."""
+
+    @pytest.mark.asyncio
+    async def test_skips_when_opening(
+        self,
+        mock_hass: MagicMock,
+        cover_config_default: CoverConfig,
+        calculation_result_direct_sun: SlatCalculationResult,
+    ) -> None:
+        """Skips pipeline when cover state is 'opening'."""
+        mock_hass.states.get.return_value = create_mock_state(
+            state="opening",
+            attributes={"current_position": 50, "current_tilt_position": 50},
+        )
+        mock_hass.services.async_call = AsyncMock()
+        controller = CoverController(mock_hass)
+
+        result = await controller.apply_calculation(cover_config_default, calculation_result_direct_sun)
+
+        assert result is False
+        mock_hass.services.async_call.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_skips_when_closing(
+        self,
+        mock_hass: MagicMock,
+        cover_config_default: CoverConfig,
+        calculation_result_direct_sun: SlatCalculationResult,
+    ) -> None:
+        """Skips pipeline when cover state is 'closing'."""
+        mock_hass.states.get.return_value = create_mock_state(
+            state="closing",
+            attributes={"current_position": 50, "current_tilt_position": 50},
+        )
+        mock_hass.services.async_call = AsyncMock()
+        controller = CoverController(mock_hass)
+
+        result = await controller.apply_calculation(cover_config_default, calculation_result_direct_sun)
+
+        assert result is False
+        mock_hass.services.async_call.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_proceeds_when_open(
+        self,
+        mock_hass: MagicMock,
+        calculation_result_direct_sun: SlatCalculationResult,
+    ) -> None:
+        """Proceeds through pipeline when cover state is 'open' — tilt is applied."""
+        mock_hass.states.get.return_value = create_mock_state(
+            state="open",
+            attributes={"current_position": 100, "current_tilt_position": 40},
+        )
+        mock_hass.services.async_call = AsyncMock()
+        controller = CoverController(mock_hass)
+        config = CoverConfig(
+            entity_id="cover.test",
+            drive_position=100,
+            min_angle=0,
+            max_angle=90,
+            invert_tilt=False,
+            no_sun_behavior="keep_last",
+            no_sun_position=50,
+            respect_manual_close=False,
+            manual_close_threshold=5,
+            minimum_tilt_change=0,
+            enabled=True,
+            reflection_protection_enabled=False,
+            reflection_protection_min_tilt=50,
+            reflection_protection_start_time="09:00",
+            reflection_protection_end_time="17:00",
+            respect_manual_open=False,
+        )
+
+        result = await controller.apply_calculation(config, calculation_result_direct_sun)
+
+        assert result is True
+        mock_hass.services.async_call.assert_called()
+
+    @pytest.mark.asyncio
+    async def test_proceeds_when_closed(
+        self,
+        mock_hass: MagicMock,
+        calculation_result_direct_sun: SlatCalculationResult,
+    ) -> None:
+        """Proceeds through pipeline when cover state is 'closed' — tilt is applied."""
+        mock_hass.states.get.return_value = create_mock_state(
+            state="closed",
+            attributes={"current_position": 100, "current_tilt_position": 40},
+        )
+        mock_hass.services.async_call = AsyncMock()
+        controller = CoverController(mock_hass)
+        config = CoverConfig(
+            entity_id="cover.test",
+            drive_position=100,
+            min_angle=0,
+            max_angle=90,
+            invert_tilt=False,
+            no_sun_behavior="keep_last",
+            no_sun_position=50,
+            respect_manual_close=False,
+            manual_close_threshold=5,
+            minimum_tilt_change=0,
+            enabled=True,
+            reflection_protection_enabled=False,
+            reflection_protection_min_tilt=50,
+            reflection_protection_start_time="09:00",
+            reflection_protection_end_time="17:00",
+            respect_manual_open=False,
+        )
+
+        result = await controller.apply_calculation(config, calculation_result_direct_sun)
+
+        assert result is True
+        mock_hass.services.async_call.assert_called()
+
+    @pytest.mark.asyncio
+    async def test_proceeds_when_state_unavailable(
+        self,
+        mock_hass: MagicMock,
+        cover_config_default: CoverConfig,
+        calculation_result_direct_sun: SlatCalculationResult,
+    ) -> None:
+        """Proceeds when cover state is unavailable (let downstream pipes handle it)."""
+        mock_hass.states.get.return_value = None
+        mock_hass.services.async_call = AsyncMock()
+        controller = CoverController(mock_hass)
+
+        result = await controller.apply_calculation(cover_config_default, calculation_result_direct_sun)
+
+        # PositionDrivePipe returns False when state is None — no tilt applied but no error
+        assert result is False
+        mock_hass.services.async_call.assert_not_called()
