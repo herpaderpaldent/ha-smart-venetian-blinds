@@ -16,7 +16,7 @@
           "facade_azimuth_deg": "Richtung, in die das Fenster zeigt (0°=Nord, 90°=Ost, 180°=Süd, 270°=West)",
           "slat_width_mm": "Breite jeder Lamelle in Millimetern (Hinweis: bei Z-Profil-Lamellen die effektive projizierte Breite verwenden, z.B. ~80mm bei Z-90)",
           "slat_spacing_mm": "Abstand zwischen den Lamellen in Millimetern (Hinweis: bei Z-Profil-Lamellen die Lamellenteilung/Pitch verwenden, nicht den sichtbaren Spalt)",
-          "safety_margin_deg": "Zusätzliche Grad zum berechneten Winkel, um vollständige Sonnenblockade sicherzustellen (kompensiert Mess- und Aktortoleranzen)"
+          "safety_margin_deg": "Zusätzliche Grad zum berechneten Winkel, um vollständige Sonnenblockade sicherzustellen (kompensiert Mess- und Aktortoleranzen). Typischer Wert: 5–15°."
         }
       },
       "reconfigure": {
@@ -32,7 +32,7 @@
           "facade_azimuth_deg": "Richtung, in die das Fenster zeigt (0°=Nord, 90°=Ost, 180°=Süd, 270°=West)",
           "slat_width_mm": "Breite jeder Lamelle in Millimetern (Hinweis: bei Z-Profil-Lamellen die effektive projizierte Breite verwenden, z.B. ~80mm bei Z-90)",
           "slat_spacing_mm": "Abstand zwischen den Lamellen in Millimetern (Hinweis: bei Z-Profil-Lamellen die Lamellenteilung/Pitch verwenden, nicht den sichtbaren Spalt)",
-          "safety_margin_deg": "Zusätzliche Grad zum berechneten Winkel, um vollständige Sonnenblockade sicherzustellen (kompensiert Mess- und Aktortoleranzen)"
+          "safety_margin_deg": "Zusätzliche Grad zum berechneten Winkel, um vollständige Sonnenblockade sicherzustellen (kompensiert Mess- und Aktortoleranzen). Typischer Wert: 5–15°."
         }
       }
     },

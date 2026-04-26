@@ -110,11 +110,13 @@ def calculate_slat_angle(
 
     ratio = (d * cos_omega) / L
 
-    # Guard: Geometry impossible (slats can't fully block sun)
+    # Guard: Geometry impossible (slats can't fully block sun at this profile angle)
     if ratio > 1.0:
-        # Slat spacing too large for complete cut-off
-        # Use maximum closure angle
-        theta_deg = max_angle_deg
+        # Complete cut-off is geometrically impossible (spacing too large relative to width).
+        # Use best-effort angle: theta = 90° - omega maximises the blocked sun fraction
+        # without over-closing. This produces a smooth, continuous tilt curve instead of
+        # an abrupt snap to fully-closed (0% tilt) at the threshold.
+        theta_deg = 90.0 - omega_deg
     elif ratio < -1.0:
         # Shouldn't happen with valid geometry, but handle gracefully
         theta_deg = min_angle_deg

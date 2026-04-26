@@ -122,8 +122,8 @@ from custom_components.smart_venetian_blinds.cover_control.pipes import (  # noq
 # ---------------------------------------------------------------------------
 # Slat geometry (integration defaults)
 # ---------------------------------------------------------------------------
-SLAT_WIDTH_MM = 80  # mm – slat width  (L in cut-off formula)
-SLAT_SPACING_MM = 70  # mm – slat pitch   (d in cut-off formula)
+SLAT_WIDTH_MM = 90  # mm – slat width  (L in cut-off formula)
+SLAT_SPACING_MM = 80  # mm – slat pitch   (d in cut-off formula)
 SAFETY_MARGIN_DEG = 0
 DRIVE_POSITION = 0  # % – cover driven fully closed before tilting
 
