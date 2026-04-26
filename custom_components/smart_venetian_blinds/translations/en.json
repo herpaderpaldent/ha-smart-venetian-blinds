@@ -16,7 +16,7 @@
           "facade_azimuth_deg": "Direction the window faces (0°=North, 90°=East, 180°=South, 270°=West)",
           "slat_width_mm": "Width of each slat in millimeters (note: for Z-profile slats, use the effective projected width, e.g. ~80mm for Z-90)",
           "slat_spacing_mm": "Spacing between slats in millimeters (note: for Z-profile slats, use the Lamellenteilung/pitch, not the visible gap)",
-          "safety_margin_deg": "Extra degrees added to calculated angle to ensure full sun blockage (compensates for measurement and actuator tolerances)"
+          "safety_margin_deg": "Extra degrees added to calculated angle to ensure full sun blockage (compensates for measurement and actuator tolerances). Typical value: 5-15°."
         }
       },
       "reconfigure": {
@@ -32,7 +32,7 @@
           "facade_azimuth_deg": "Direction the window faces (0°=North, 90°=East, 180°=South, 270°=West)",
           "slat_width_mm": "Width of each slat in millimeters (note: for Z-profile slats, use the effective projected width, e.g. ~80mm for Z-90)",
           "slat_spacing_mm": "Spacing between slats in millimeters (note: for Z-profile slats, use the Lamellenteilung/pitch, not the visible gap)",
-          "safety_margin_deg": "Extra degrees added to calculated angle to ensure full sun blockage (compensates for measurement and actuator tolerances)"
+          "safety_margin_deg": "Extra degrees added to calculated angle to ensure full sun blockage (compensates for measurement and actuator tolerances). Typical value: 5-15°."
         }
       }
     },

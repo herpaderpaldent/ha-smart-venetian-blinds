@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+
 import pytest
 
 from custom_components.smart_venetian_blinds.sun.math import (
@@ -167,18 +169,20 @@ class TestCalculateSlatAngle:
         assert result is not None
         assert result.slat_angle_deg <= 60.0
 
-    def test_wide_slat_spacing_uses_max_angle(self) -> None:
-        """Very wide slat spacing can't fully block sun, uses max angle."""
+    def test_wide_slat_spacing_uses_best_effort_angle(self) -> None:
+        """Very wide slat spacing can't fully block sun, uses best-effort angle (90 - omega)."""
         sun = SunPosition(azimuth_deg=180.0, elevation_deg=60.0)
         result = calculate_slat_angle(
             sun=sun,
             facade_azimuth_deg=self.FACADE_SOUTH,
             slat_width_mm=50.0,  # Narrow slats
-            slat_spacing_mm=100.0,  # Wide spacing
+            slat_spacing_mm=100.0,  # Wide spacing → ratio > 1
         )
         assert result is not None
-        # With extreme geometry ratio > 1, uses max_angle (90)
-        assert result.slat_angle_deg == 90.0
+        # omega = 60° (sun directly facing facade, elevation = profile angle)
+        # Best-effort: theta = 90 - 60 = 30°  →  tilt = (1 - 30/90)*100 ≈ 66.7%
+        assert result.slat_angle_deg == 30.0
+        assert result.slat_tilt_percent == pytest.approx(66.7, abs=0.1)
 
     def test_result_rounding(self, sun_position_midday: SunPosition) -> None:
         """Results are rounded to one decimal place."""
@@ -295,6 +299,89 @@ class TestCalculateSlatAngle:
                 assert result.slat_angle_deg == 0.0
             else:
                 assert 0.0 <= result.slat_angle_deg <= 90.0
+
+
+@pytest.mark.unit
+class TestRatioExceedsOne:
+    """Tests for best-effort angle when slat spacing > width (ratio > 1)."""
+
+    # Geometry where spacing > width → ratio can exceed 1.0
+    # ratio_max = 85/75 ≈ 1.133 → threshold at arccos(75/85) ≈ 28.1°
+    SLAT_WIDTH = 75.0
+    SLAT_SPACING = 85.0
+    FACADE_SOUTH = 180.0
+
+    def _calc(self, omega_deg: float) -> float:
+        """Calculate tilt at a profile angle approximated by low-elevation direct sun.
+
+        For sun directly facing the facade (azimuth == facade azimuth), omega == elevation.
+        """
+        sun = SunPosition(azimuth_deg=self.FACADE_SOUTH, elevation_deg=omega_deg)
+        result = calculate_slat_angle(
+            sun=sun,
+            facade_azimuth_deg=self.FACADE_SOUTH,
+            slat_width_mm=self.SLAT_WIDTH,
+            slat_spacing_mm=self.SLAT_SPACING,
+        )
+        assert result is not None
+        assert not result.sun_is_behind_facade
+        return result.slat_tilt_percent
+
+    def test_ratio_above_one_does_not_return_zero_tilt(self) -> None:
+        """When ratio > 1, tilt must not snap to 0% (old broken behaviour)."""
+        # omega=20° → ratio = 85*cos(20°)/75 ≈ 1.065 > 1
+        tilt = self._calc(20.0)
+        assert tilt > 0.0, f"Expected tilt > 0% when ratio > 1, got {tilt}%"
+
+    def test_best_effort_formula_at_omega_22_5(self) -> None:
+        """At omega=22.5° with spacing=85/width=75, best-effort gives 25% tilt."""
+        # theta = 90 - omega = 90 - 22.5 = 67.5°  →  tilt = (1 - 67.5/90)*100 = 25%
+        tilt = self._calc(22.5)
+        assert abs(tilt - 25.0) < 0.5, f"Expected ~25%, got {tilt}%"
+
+    def test_best_effort_formula_at_omega_20(self) -> None:
+        """At omega=20°, best-effort gives 22.2% tilt (theta=70°)."""
+        # theta = 90 - 20 = 70°  →  tilt = (1 - 70/90)*100 ≈ 22.2%
+        tilt = self._calc(20.0)
+        assert abs(tilt - 22.2) < 0.5, f"Expected ~22.2%, got {tilt}%"
+
+    def test_no_jump_at_threshold(self) -> None:
+        """At the exact threshold omega, both code paths give identical theta = 90° - omega.
+
+        Threshold for these slats: arccos(75/85) ≈ 28.07°. At that point:
+        - Normal formula: asin(ratio=1.0) - omega = 90° - omega
+        - Best-effort: 90° - omega
+        Both are equal → no jump at boundary.
+        """
+        threshold_omega = math.degrees(math.acos(self.SLAT_WIDTH / self.SLAT_SPACING))  # ≈ 28.07°
+        expected_theta = 90.0 - threshold_omega
+        expected_tilt = round(100.0 * (1.0 - expected_theta / 90.0), 1)
+
+        tilt = self._calc(threshold_omega)
+        assert abs(tilt - expected_tilt) < 0.2, (
+            f"At threshold omega={threshold_omega:.2f}°, expected tilt {expected_tilt}%, got {tilt}%"
+        )
+
+    def test_best_effort_respects_mechanical_max_angle(self) -> None:
+        """Best-effort theta is still clamped by max_angle_deg constraint."""
+        # At very low omega (e.g. 5°), theta = 90-5 = 85° — but if max_angle=80°, clamp applies
+        sun = SunPosition(azimuth_deg=self.FACADE_SOUTH, elevation_deg=5.0)
+        result = calculate_slat_angle(
+            sun=sun,
+            facade_azimuth_deg=self.FACADE_SOUTH,
+            slat_width_mm=self.SLAT_WIDTH,
+            slat_spacing_mm=self.SLAT_SPACING,
+            max_angle_deg=80.0,
+        )
+        assert result is not None
+        assert result.slat_angle_deg <= 80.0
+
+    def test_normal_case_unaffected(self) -> None:
+        """When ratio <= 1 (high sun), normal formula still applies."""
+        # omega=40° → ratio = 85*cos(40°)/75 ≈ 0.869 < 1 → normal path
+        tilt = self._calc(40.0)
+        # Normal formula: theta = asin(0.869) - 40° ≈ 60.3° - 40° = 20.3° → tilt ≈ 77.4%
+        assert tilt > 70.0, f"Expected high tilt (>70%) when sun is steep, got {tilt}%"
 
 
 @pytest.mark.unit
