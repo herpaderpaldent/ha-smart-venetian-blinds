@@ -1,0 +1,76 @@
+name: Prepare release
+
+# Bumps the version in manifest.json, regenerates behavior diagrams,
+# and opens a PR targeting main. Merging that PR automatically triggers
+# the release-tag workflow which creates the git tag and GitHub Release.
+#
+# Usage: GitHub UI → Actions → "Prepare release" → Run workflow → enter version
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "New version (e.g. 0.7.8)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  prepare:
+    name: "Bump version & open PR"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate version format
+        run: |
+          if ! echo "${{ inputs.version }}" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::Version '${{ inputs.version }}' is not in X.Y.Z format"
+            exit 1
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Bump version in manifest.json
+        run: |
+          python3 - << 'PYEOF'
+          import json, pathlib
+          manifest = pathlib.Path("custom_components/smart_venetian_blinds/manifest.json")
+          data = json.loads(manifest.read_text())
+          data["version"] = "${{ inputs.version }}"
+          manifest.write_text(json.dumps(data, indent=2) + "\n")
+          PYEOF
+          echo "Bumped manifest.json to ${{ inputs.version }}"
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.13"
+
+      - name: Install visualize dependencies
+        run: pip install -r requirements_visualize.txt
+
+      - name: Regenerate behavior diagrams
+        run: python3 script/visualize
+
+      - name: Open PR
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          BRANCH="chore/release-${{ inputs.version }}"
+          git checkout -b "$BRANCH"
+          git add custom_components/smart_venetian_blinds/manifest.json docs/images/
+          git diff --cached --stat
+          git commit -m "chore: release ${{ inputs.version }}"
+          git push --force origin "$BRANCH"
+          gh pr create \
+            --base main \
+            --head "$BRANCH" \
+            --title "chore: release ${{ inputs.version }}" \
+            --body "$(printf '## Release %s\n\nThis PR was created automatically by the **Prepare release** workflow.\n\nChanges:\n- Bumped `manifest.json` version to `%s`\n- Regenerated behavior diagrams\n\nMerge to trigger automatic tag and GitHub Release creation.' \
+              "${{ inputs.version }}" "${{ inputs.version }}")"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
