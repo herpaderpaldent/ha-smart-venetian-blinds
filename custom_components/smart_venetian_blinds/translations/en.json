@@ -157,6 +157,14 @@
     "step": {
       "init": {
         "title": "Configure Options",
+        "description": "Choose which settings to adjust.",
+        "menu_options": {
+          "timing": "Update throttling",
+          "season": "Seasonal pause"
+        }
+      },
+      "timing": {
+        "title": "Update Throttling",
         "description": "Adjust update throttling settings.",
         "data": {
           "change_threshold_deg": "Change threshold",
@@ -170,10 +178,38 @@
           "position_timeout_sec": "Maximum time (in seconds) to wait for a cover to reach its drive position before applying tilt. Increase this for slow covers.",
           "position_settling_delay_sec": "Extra wait time (in seconds) after the cover reports reaching its drive position before applying tilt. Use this if your cover device reports the target position before the motor has fully stopped."
         }
+      },
+      "season": {
+        "title": "Seasonal Pause",
+        "description": "Restrict this window group to one part of the year. Outside the season the group keeps calculating sun position, but no longer moves any cover. On the first sunlit cycle of the pause each cover is driven once to the rest position and then left alone.",
+        "data": {
+          "season_pause_enabled": "Seasonal pause active",
+          "season_start_month": "Season start month",
+          "season_start_day": "Season start day",
+          "season_end_month": "Season end month",
+          "season_end_day": "Season end day",
+          "season_rest_position_percent": "Rest position"
+        },
+        "data_description": {
+          "season_pause_enabled": "When off, the group controls covers all year round.",
+          "season_start_month": "Month in which sun tracking resumes.",
+          "season_start_day": "Day of month on which sun tracking resumes (inclusive).",
+          "season_end_month": "Month in which sun tracking stops.",
+          "season_end_day": "Day of month on which sun tracking stops (inclusive, last active day).",
+          "season_rest_position_percent": "Position each cover is driven to once when the pause begins (0%=closed, 100%=open). A season that ends before it starts, e.g. 01.11 to 28.02, wraps across New Year."
+        }
       }
+    },
+    "error": {
+      "invalid_season_date": "This day does not exist in the selected month."
     }
   },
   "entity": {
+    "binary_sensor": {
+      "seasonal_pause": {
+        "name": "Seasonal Pause"
+      }
+    },
     "number": {
       "slat_width": {
         "name": "Slat Width"
@@ -206,6 +242,24 @@
     "apply_now": {
       "name": "Apply Now",
       "description": "Force immediate recalculation and application of slat angles to all covers, ignoring throttling rules."
+    }
+  },
+  "selector": {
+    "month": {
+      "options": {
+        "1": "January",
+        "2": "February",
+        "3": "March",
+        "4": "April",
+        "5": "May",
+        "6": "June",
+        "7": "July",
+        "8": "August",
+        "9": "September",
+        "10": "October",
+        "11": "November",
+        "12": "December"
+      }
     }
   }
 }

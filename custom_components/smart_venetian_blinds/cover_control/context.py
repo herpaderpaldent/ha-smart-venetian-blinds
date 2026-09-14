@@ -40,6 +40,13 @@ class CoverTrackingState:
     Cleared when the sun returns to the facade.
     """
 
+    season_rest_applied: bool = False
+    """
+    True once the one-time season rest drive has been applied for this cover during
+    the current seasonal pause. Set by SeasonalPausePipe when the group is outside
+    its configured season; cleared by the same pipe when the season starts again.
+    """
+
     resuming_from_exit: bool = False
     """
     Set to True by ExitModeSwitch.async_turn_off when the user manually deactivates

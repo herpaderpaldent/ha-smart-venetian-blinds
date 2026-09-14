@@ -59,9 +59,11 @@ from custom_components.smart_venetian_blinds.cover_control.pipes import (
     ExitPausedCheckPipe,
     NoSunPipe,
     PositionDrivePipe,
+    SeasonalPausePipe,
     SleepProtectionPipe,
     TiltPipe,
 )
+from custom_components.smart_venetian_blinds.season import SeasonWindow
 
 if TYPE_CHECKING:
     from custom_components.smart_venetian_blinds.sun import SlatCalculationResult
@@ -141,6 +143,7 @@ class Pipeline:
         pipes: list[
             EnabledPipe
             | DrivingCheckPipe
+            | SeasonalPausePipe
             | SleepProtectionPipe
             | ExitPausedCheckPipe
             | NoSunPipe
@@ -184,12 +187,14 @@ class CoverController:
         position_timeout_sec: int = DEFAULT_POSITION_TIMEOUT,
         settling_delay_sec: int = 5,
         cover_states: dict[str, CoverTrackingState] | None = None,
+        season: SeasonWindow | None = None,
     ) -> None:
         """Initialize the cover controller."""
         self._hass = hass
         self._position_timeout_sec = position_timeout_sec
         self._settling_delay_sec = settling_delay_sec
         self._cover_states = cover_states if cover_states is not None else {}
+        self._season = season if season is not None else SeasonWindow()
 
     def _get_or_create_state(self, entity_id: str) -> CoverTrackingState:
         """Get or create the tracking state for a cover."""
@@ -204,6 +209,7 @@ class CoverController:
                 EnabledPipe(),
                 DrivingCheckPipe(),
                 SleepProtectionPipe(),
+                SeasonalPausePipe(self._season, self._position_timeout_sec),
                 ExitPausedCheckPipe(),
                 NoSunPipe(self._position_timeout_sec),
                 ExitDetectionPipe(),

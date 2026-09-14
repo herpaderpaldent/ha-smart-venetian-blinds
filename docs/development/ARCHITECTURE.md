@@ -31,6 +31,7 @@ custom_components/smart_venetian_blinds/
 │       ├── __init__.py
 │       ├── enabled.py       # EnabledPipe — skip disabled covers
 │       ├── sleep_protection.py # SleepProtectionPipe — skip if tilt below threshold
+│       ├── seasonal_pause.py  # SeasonalPausePipe — stop tracking outside the season
 │       ├── exit_paused.py   # ExitPausedCheckPipe — skip if exit_paused
 │       ├── no_sun.py        # NoSunPipe — no-sun detection, dispatch, sunrise bypass
 │       ├── exit_detection.py # ExitDetectionPipe — auto-detect manual open / exit mode
@@ -127,7 +128,12 @@ flowchart TD
     B -->|disabled| Z([stop])
     B --> C[SleepProtectionPipe]
     C -->|tilt &lt; manual_close_threshold| Z
-    C --> D[ExitPausedCheckPipe]
+    C --> S[SeasonalPausePipe]
+    S -->|"paused, rest position applied"| Z
+    S -->|"paused, sun below horizon"| Z
+    S -->|"paused, first sunlit cycle"| S1["drive to rest position<br/>set season_rest_applied = true"]
+    S1 --> Z
+    S -->|in season| D[ExitPausedCheckPipe]
     D -->|exit_paused = true| Z
     D --> E[NoSunPipe]
 
@@ -152,6 +158,7 @@ flowchart TD
 |---|---|
 | `exit_paused` | Set by auto exit-detection or user switch. Cleared at start of each no-sun period. |
 | `in_no_sun` | True once the no-sun action has fired for the current no-sun period. Cleared when sun returns. |
+| `season_rest_applied` | True once the one-time rest drive of the current seasonal pause has run. Cleared by `SeasonalPausePipe` when the season starts again. |
 
 **`CoverContext`** (per-cycle, not persisted):
 
@@ -172,6 +179,30 @@ Implements the configuration UI for adding and configuring window groups and cov
 - `subentry_flow.py`: Cover subentry flow for adding individual covers to a group
 - `schemas/`: Voluptuous schemas for group, cover, and options forms
 - `validators/`: Input validation (`__init__.py` only)
+
+The options flow is a menu with two steps: `timing` (throttling, position timeout,
+settling delay) and `season` (seasonal pause window and rest position). Each step
+merges its input into the existing options, so saving one never clears the other.
+
+### Seasonal Window
+
+**Directory:** `season/`
+
+`SeasonWindow` holds the recurring yearly window during which a group controls its
+covers. Only `(month, day)` is compared, so the window repeats every year, and a
+start date after the end date wraps across New Year (e.g. 01.11 to 28.02).
+
+Outside the window the coordinator keeps calculating — sensors stay live — while
+`SeasonalPausePipe` stops all cover movement. Each cover is driven to the configured
+rest position exactly once, deferred until the sun is above the horizon so a pause
+never raises a cover at night.
+
+`season_rest_applied` lives in runtime data and is therefore lost on reload. At setup,
+`_restore_season_rest_flags()` seeds it: a reload within the same Home Assistant run
+restores the flags stashed by `async_unload_entry()` (so enabling the pause from the
+options flow still performs the rest drive), while a fresh start during an ongoing
+pause marks the drive as done, so restarting Home Assistant never pulls a hand-moved
+cover back to the rest position.
 
 **Key classes:**
 

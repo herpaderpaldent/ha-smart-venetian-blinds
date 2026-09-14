@@ -12,6 +12,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.helpers import device_registry as dr, entity_registry as er
+import homeassistant.util.dt as dt_util
+
+from .season import SeasonWindow
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -90,8 +93,21 @@ async def async_get_config_entry_diagnostics(
     # Group state
     state_info = {
         "auto_control_enabled": state.auto_control_enabled,
+        "season_rest_applied": {
+            entity_id: cover_state.season_rest_applied for entity_id, cover_state in state.cover_states.items()
+        },
         "last_applied_angle": state.last_applied_angle,
         "last_applied_time": state.last_applied_time.isoformat() if state.last_applied_time else None,
+    }
+
+    # Seasonal pause information
+    season = SeasonWindow.from_options(entry.options)
+    season_info = {
+        "enabled": season.enabled,
+        "window": season.describe(),
+        "wraps_year_end": season.wraps_year_end,
+        "rest_position": season.rest_position,
+        "currently_paused": season.is_paused(dt_util.now().date()),
     }
 
     # Group configuration
@@ -132,6 +148,7 @@ async def async_get_config_entry_diagnostics(
         "group": group_info,
         "sun": sun_info,
         "coordinator": coordinator_info,
+        "season": season_info,
         "calculation": calculation_info,
         "state": state_info,
         "covers": covers_info,

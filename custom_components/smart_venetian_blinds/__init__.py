@@ -19,6 +19,7 @@ from homeassistant.const import Platform
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.event import async_track_time_change
 from homeassistant.loader import async_get_loaded_integration
+import homeassistant.util.dt as dt_util
 
 from .const import (
     CONF_COVER_ENTITY,
@@ -34,6 +35,7 @@ from .coordinator.state import GroupState
 from .cover_control import CoverController
 from .cover_control.context import CoverTrackingState
 from .data import SmartVenetianBlindsData
+from .season import SeasonWindow
 from .service_actions import async_setup_services
 from .sun import SunDataProvider, SunStateListener
 
@@ -43,12 +45,56 @@ if TYPE_CHECKING:
     from .data import SmartVenetianBlindsConfigEntry
 
 PLATFORMS: list[Platform] = [
+    Platform.BINARY_SENSOR,
     Platform.NUMBER,
     Platform.SENSOR,
     Platform.SWITCH,
 ]
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+
+SEASON_REST_STORE_KEY = "season_rest_applied"
+"""hass.data key under which season rest flags survive a config entry reload."""
+
+
+def _season_rest_store(hass: HomeAssistant) -> dict[str, dict[str, bool]]:
+    """Return the per-entry store of season rest flags, creating it if needed."""
+    return hass.data.setdefault(DOMAIN, {}).setdefault(SEASON_REST_STORE_KEY, {})
+
+
+def _restore_season_rest_flags(hass: HomeAssistant, entry: SmartVenetianBlindsConfigEntry) -> None:
+    """
+    Seed each cover's ``season_rest_applied`` flag when the group starts up paused.
+
+    The flag lives in runtime data, so it is lost on every reload. Without seeding
+    it, each Home Assistant restart during a months-long pause would drive every
+    cover back to the rest position — overriding whatever the user set by hand.
+
+    A reload within the same Home Assistant run keeps the previous flags (stored by
+    ``async_unload_entry``), so enabling the seasonal pause from the options flow
+    still performs the one-time rest drive. After a real restart there are no stored
+    flags and the covers are left untouched.
+    """
+    season = SeasonWindow.from_options(entry.options)
+    if not season.is_paused(dt_util.now().date()):
+        return
+
+    previous = _season_rest_store(hass).get(entry.entry_id)
+    state = entry.runtime_data.state
+
+    for subentry in entry.subentries.values():
+        entity_id = subentry.data.get(CONF_COVER_ENTITY)
+        if not entity_id:
+            continue
+        cover_state = state.cover_states.setdefault(entity_id, CoverTrackingState())
+        cover_state.season_rest_applied = True if previous is None else previous.get(entity_id, False)
+
+    LOGGER.debug(
+        "Group '%s' starts up seasonally paused (season %s, reload=%s)",
+        entry.title,
+        season.describe(),
+        previous is not None,
+    )
 
 
 def _create_controller(hass: HomeAssistant, entry: SmartVenetianBlindsConfigEntry) -> CoverController:
@@ -59,6 +105,7 @@ def _create_controller(hass: HomeAssistant, entry: SmartVenetianBlindsConfigEntr
         position_timeout_sec=entry.options.get(CONF_POSITION_TIMEOUT, DEFAULT_POSITION_TIMEOUT),
         settling_delay_sec=entry.options.get(CONF_POSITION_SETTLING_DELAY, DEFAULT_POSITION_SETTLING_DELAY),
         cover_states=state.cover_states,
+        season=SeasonWindow.from_options(entry.options),
     )
 
 
@@ -132,6 +179,8 @@ async def async_setup_entry(
             len(entry.subentries),
         )
 
+    _restore_season_rest_flags(hass, entry)
+
     # Create async callback for applying cover tilts
     async def apply_cover_tilts() -> None:
         """Apply cover tilts based on current calculation."""
@@ -201,6 +250,9 @@ async def async_setup_entry(
                 entry.title,
                 flagged,
             )
+        # Refresh entities so the seasonal pause sensor flips on the day the
+        # configured season starts or ends, without waiting for a sun event.
+        coordinator.trigger_update()
 
     entry.async_on_unload(async_track_time_change(hass, _reset_exit_paused_at_midnight, hour=0, minute=0, second=0))
 
@@ -226,8 +278,17 @@ async def async_unload_entry(
     """
     Unload a config entry.
 
-    This is called when the integration is being removed or reloaded.
+    This is called when the integration is being removed or reloaded. The season
+    rest flags are stashed in hass.data so a reload (e.g. after an options change)
+    can tell itself apart from a fresh Home Assistant start.
     """
+    runtime_data = getattr(entry, "runtime_data", None)
+    if runtime_data is not None:
+        _season_rest_store(hass)[entry.entry_id] = {
+            entity_id: cover_state.season_rest_applied
+            for entity_id, cover_state in runtime_data.state.cover_states.items()
+        }
+
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
 
