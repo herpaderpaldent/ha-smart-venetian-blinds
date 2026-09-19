@@ -31,6 +31,7 @@ custom_components/smart_venetian_blinds/
 │       ├── __init__.py
 │       ├── enabled.py       # EnabledPipe — skip disabled covers
 │       ├── sleep_protection.py # SleepProtectionPipe — skip if tilt below threshold
+│       ├── seasonal_pause.py  # SeasonalPausePipe — stop tracking outside the season
 │       ├── exit_paused.py   # ExitPausedCheckPipe — skip if exit_paused
 │       ├── no_sun.py        # NoSunPipe — no-sun detection, dispatch, sunrise bypass
 │       ├── exit_detection.py # ExitDetectionPipe — auto-detect manual open / exit mode
@@ -125,8 +126,11 @@ Applies calculated slat angles to physical cover entities via a **pipeline (chai
 flowchart TD
     A([Sun update]) --> B[EnabledPipe]
     B -->|disabled| Z([stop])
-    B --> C[SleepProtectionPipe]
-    C -->|tilt &lt; manual_close_threshold| Z
+    B --> S[SeasonalPausePipe]
+    S -->|"paused, rest drive done or expired"| Z
+    S -->|"paused, first day, sun up, slats open"| S1["drive to rest position<br/>record it as done"]
+    S1 --> Z
+    S -->|in season| C[SleepProtectionPipe]
     C --> D[ExitPausedCheckPipe]
     D -->|exit_paused = true| Z
     D --> E[NoSunPipe]
@@ -173,10 +177,44 @@ Implements the configuration UI for adding and configuring window groups and cov
 - `schemas/`: Voluptuous schemas for group, cover, and options forms
 - `validators/`: Input validation (`__init__.py` only)
 
-**Key classes:**
+The options flow is a menu with two steps: `timing` (throttling, position timeout,
+settling delay) and `season` (seasonal pause window and rest position). Each step
+merges its input into the existing options, so saving one never clears the other.
 
-- `SmartVenetianBlindsConfigFlowHandler` (main flow)
-- `SmartVenetianBlindsOptionsFlow` (options)
+### Seasonal Window
+
+**Directory:** `season/`
+
+`SeasonWindow` holds the recurring yearly window during which a group controls its
+covers. Only `(month, day)` is compared, so the window repeats every year, and a
+start date after the end date wraps across New Year (e.g. 01.11 to 28.02).
+
+Outside the window the coordinator keeps calculating — sensors stay live — while
+`SeasonalPausePipe` stops all cover movement.
+
+**The one-time rest drive.** On the first day of a pause each cover is driven once to
+the configured rest position. It is held back until the sun is above the horizon, and
+it respects manually closed slats, so it never moves a cover at night or over a closed
+blind. If it cannot run that day it is abandoned rather than left armed — a drive that
+fires weeks later, the moment a cover happens to become reachable, is a worse surprise
+than an unparked cover.
+
+`SeasonRestStore` persists that per cover, keyed by the pause period and by a token
+covering the window and the rest position. This is why a restart mid-pause neither
+re-drives a cover the user has since moved by hand nor silently cancels a drive that
+never happened, why next year's pause drives again, and why correcting the rest
+position during a pause takes effect instead of being ignored.
+
+While paused, the pipe keeps `in_no_sun` in step with the real sun position. The pipes
+behind it never run during a pause, so without that the first cycle after the season
+resumes — just after midnight, in the dark — would look to `NoSunPipe` like a fresh
+no-sun period and fire its action.
+
+**Day values.** Boundaries are stored as month/day and offered as `MM-DD` option values
+with localized labels (`season/day_options.py`). Home Assistant has no month/day
+selector or entity; a date picker would show a year that carries no meaning, would not
+survive a round trip, and would make the device-page entities change state every New
+Year.
 
 ### Base Entity
 
@@ -193,7 +231,7 @@ Provides common functionality for all entities in the integration:
 
 ## Platform Organization
 
-Each platform (sensor, switch) follows this pattern:
+Each platform (binary_sensor, number, select, sensor, switch) follows this pattern:
 
 ```text
 <platform>/
@@ -246,7 +284,7 @@ See [DECISIONS.md](./DECISIONS.md) for architectural and design decisions made d
 1. Create directory: `custom_components/smart_venetian_blinds/<platform>/`
 2. Implement `__init__.py` with `async_setup_entry()`
 3. Create entity classes inheriting from platform base + `SmartVenetianBlindsEntity`
-4. Add platform to `PLATFORMS` in `const.py`
+4. Add platform to `PLATFORMS` in `__init__.py`
 
 ### Adding a New Service Action
 

@@ -1,4 +1,4 @@
-"""Switch platform for smart_venetian_blinds."""
+"""Binary sensor platform for smart_venetian_blinds."""
 
 from __future__ import annotations
 
@@ -6,9 +6,7 @@ from typing import TYPE_CHECKING
 
 from custom_components.smart_venetian_blinds.const import PARALLEL_UPDATES as PARALLEL_UPDATES
 
-from .auto_control import AutoControlSwitch
-from .exit_mode import ExitModeSwitch
-from .season_pause import SeasonPauseSwitch
+from .seasonal_pause import SeasonalPauseBinarySensor
 
 if TYPE_CHECKING:
     from custom_components.smart_venetian_blinds.data import SmartVenetianBlindsConfigEntry
@@ -21,13 +19,7 @@ async def async_setup_entry(
     entry: SmartVenetianBlindsConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up the switch platform."""
+    """Set up the binary sensor platform."""
     coordinator = entry.runtime_data.coordinator
 
-    entities: list[AutoControlSwitch | ExitModeSwitch | SeasonPauseSwitch] = [
-        AutoControlSwitch(coordinator),
-        SeasonPauseSwitch(coordinator),
-    ]
-    entities.extend(ExitModeSwitch(coordinator, subentry) for subentry in entry.subentries.values())
-
-    async_add_entities(entities)
+    async_add_entities([SeasonalPauseBinarySensor(coordinator)])

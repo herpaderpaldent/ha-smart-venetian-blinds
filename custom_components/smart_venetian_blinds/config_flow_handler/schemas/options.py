@@ -17,12 +17,80 @@ from custom_components.smart_venetian_blinds.const import (
     CONF_MIN_UPDATE_INTERVAL,
     CONF_POSITION_SETTLING_DELAY,
     CONF_POSITION_TIMEOUT,
+    CONF_SEASON_END,
+    CONF_SEASON_PAUSE_ENABLED,
+    CONF_SEASON_REST_POSITION,
+    CONF_SEASON_START,
     DEFAULT_CHANGE_THRESHOLD,
     DEFAULT_MIN_UPDATE_INTERVAL,
     DEFAULT_POSITION_SETTLING_DELAY,
     DEFAULT_POSITION_TIMEOUT,
 )
+from custom_components.smart_venetian_blinds.season import SeasonWindow, day_choices
 from homeassistant.helpers import selector
+
+
+def _day_selector(language: str | None) -> selector.SelectSelector:
+    """
+    Return a dropdown listing every possible season boundary.
+
+    Home Assistant has no month/day selector, and a date picker would show a year
+    that carries no meaning and does not survive a round trip. A select stores a
+    language-independent ``MM-DD`` value while showing a localized label.
+    """
+    return selector.SelectSelector(
+        selector.SelectSelectorConfig(
+            options=[selector.SelectOptionDict(value=value, label=label) for value, label in day_choices(language)],
+            mode=selector.SelectSelectorMode.DROPDOWN,
+            custom_value=False,
+        ),
+    )
+
+
+def get_season_schema(
+    defaults: Mapping[str, Any] | None = None,
+    language: str | None = None,
+) -> vol.Schema:
+    """
+    Get schema for the seasonal pause options.
+
+    Args:
+        defaults: Optional dictionary of current option values.
+        language: Home Assistant's configured language, used for the day labels.
+
+    Returns:
+        Voluptuous schema for seasonal pause configuration.
+    """
+    defaults = defaults or {}
+    season = SeasonWindow.from_options(defaults)
+    return vol.Schema(
+        {
+            vol.Required(
+                CONF_SEASON_PAUSE_ENABLED,
+                default=season.enabled,
+            ): selector.BooleanSelector(),
+            vol.Required(
+                CONF_SEASON_START,
+                default=season.start_value,
+            ): _day_selector(language),
+            vol.Required(
+                CONF_SEASON_END,
+                default=season.end_value,
+            ): _day_selector(language),
+            vol.Required(
+                CONF_SEASON_REST_POSITION,
+                default=season.rest_position,
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0,
+                    max=100,
+                    step=1,
+                    unit_of_measurement="%",
+                    mode=selector.NumberSelectorMode.SLIDER,
+                ),
+            ),
+        },
+    )
 
 
 def get_options_schema(defaults: Mapping[str, Any] | None = None) -> vol.Schema:
@@ -92,4 +160,5 @@ def get_options_schema(defaults: Mapping[str, Any] | None = None) -> vol.Schema:
 
 __all__ = [
     "get_options_schema",
+    "get_season_schema",
 ]

@@ -34,6 +34,7 @@ from .coordinator.state import GroupState
 from .cover_control import CoverController
 from .cover_control.context import CoverTrackingState
 from .data import SmartVenetianBlindsData
+from .season import SeasonRestStore, SeasonWindow
 from .service_actions import async_setup_services
 from .sun import SunDataProvider, SunStateListener
 
@@ -43,7 +44,9 @@ if TYPE_CHECKING:
     from .data import SmartVenetianBlindsConfigEntry
 
 PLATFORMS: list[Platform] = [
+    Platform.BINARY_SENSOR,
     Platform.NUMBER,
+    Platform.SELECT,
     Platform.SENSOR,
     Platform.SWITCH,
 ]
@@ -59,6 +62,8 @@ def _create_controller(hass: HomeAssistant, entry: SmartVenetianBlindsConfigEntr
         position_timeout_sec=entry.options.get(CONF_POSITION_TIMEOUT, DEFAULT_POSITION_TIMEOUT),
         settling_delay_sec=entry.options.get(CONF_POSITION_SETTLING_DELAY, DEFAULT_POSITION_SETTLING_DELAY),
         cover_states=state.cover_states,
+        season=SeasonWindow.from_options(entry.options),
+        season_store=entry.runtime_data.season_store,
     )
 
 
@@ -88,6 +93,10 @@ async def async_setup_entry(
     # Initialize sun data provider
     sun_provider = SunDataProvider(hass)
 
+    # Load the persisted record of which covers already had their season rest drive
+    season_store = SeasonRestStore(hass, entry.entry_id)
+    await season_store.async_load()
+
     # Initialize coordinator
     coordinator = SmartVenetianBlindsDataUpdateCoordinator(
         hass=hass,
@@ -101,6 +110,7 @@ async def async_setup_entry(
         coordinator=coordinator,
         integration=async_get_loaded_integration(hass, entry.domain),
         state=GroupState(),
+        season_store=season_store,
     )
 
     # Perform initial calculation
@@ -171,8 +181,9 @@ async def async_setup_entry(
         # Update coordinator data (this updates sensors)
         coordinator.trigger_update()
 
-        # Schedule async cover tilt application
-        hass.async_create_task(apply_cover_tilts())
+        # Schedule async cover tilt application. Tracked against the entry so an
+        # unload cancels a drive that is still waiting for a cover to settle.
+        entry.async_create_background_task(hass, apply_cover_tilts(), f"{DOMAIN}_apply_cover_tilts")
 
     # Set up sun state listener for event-driven updates
     tracked_entities = sun_provider.get_tracked_entities()
@@ -201,6 +212,9 @@ async def async_setup_entry(
                 entry.title,
                 flagged,
             )
+        # Refresh entities so the seasonal pause sensor flips on the day the
+        # configured season starts or ends, without waiting for a sun event.
+        coordinator.trigger_update()
 
     entry.async_on_unload(async_track_time_change(hass, _reset_exit_paused_at_midnight, hour=0, minute=0, second=0))
 
@@ -229,6 +243,14 @@ async def async_unload_entry(
     This is called when the integration is being removed or reloaded.
     """
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+
+
+async def async_remove_entry(
+    hass: HomeAssistant,
+    entry: SmartVenetianBlindsConfigEntry,
+) -> None:
+    """Delete the group's persisted season record when it is removed."""
+    await SeasonRestStore(hass, entry.entry_id).async_remove()
 
 
 async def async_reload_entry(

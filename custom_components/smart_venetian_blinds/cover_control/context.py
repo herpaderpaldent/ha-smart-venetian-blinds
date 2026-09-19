@@ -8,9 +8,11 @@ passed through the cover control pipeline.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+
     from custom_components.smart_venetian_blinds.cover_control.controller import CoverConfig
     from custom_components.smart_venetian_blinds.sun.math import SlatCalculationResult
     from homeassistant.core import HomeAssistant
@@ -71,3 +73,11 @@ class CoverContext:
     cover can drive back down after a no_sun_behavior="open" raised it to 100%.
     Not persisted — only valid for the current pipeline run.
     """
+
+
+class CoverPipe(Protocol):
+    """One stage of the cover control pipeline."""
+
+    async def handle(self, ctx: CoverContext, call_next: Callable[[], Awaitable[bool]]) -> bool:
+        """Act on the context, then either short-circuit or call the next pipe."""
+        ...

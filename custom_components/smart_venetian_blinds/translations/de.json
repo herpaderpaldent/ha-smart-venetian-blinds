@@ -157,7 +157,15 @@
     "step": {
       "init": {
         "title": "Optionen konfigurieren",
-        "description": "Update-Drosselungseinstellungen anpassen.",
+        "description": "Wähle aus, welche Einstellungen du anpassen möchtest.",
+        "menu_options": {
+          "timing": "Timing & Drosselung",
+          "season": "Saison"
+        }
+      },
+      "timing": {
+        "title": "Timing & Drosselung",
+        "description": "Einstellungen zur Update-Drosselung anpassen.",
         "data": {
           "change_threshold_deg": "Änderungsschwellenwert",
           "min_update_interval_sec": "Minimales Update-Intervall",
@@ -170,10 +178,34 @@
           "position_timeout_sec": "Maximale Wartezeit (in Sekunden) bis die Abdeckung ihre Fahrposition erreicht, bevor die Neigung angewendet wird. Für langsame Abdeckungen erhöhen.",
           "position_settling_delay_sec": "Zusätzliche Wartezeit (in Sekunden) nachdem die Abdeckung ihre Fahrposition gemeldet hat, bevor die Neigung angewendet wird. Nutzen, wenn das Gerät die Zielposition meldet, bevor der Motor vollständig gestoppt hat."
         }
+      },
+      "season": {
+        "title": "Saison",
+        "description": "Beschränkt diese Fenstergruppe auf einen Teil des Jahres. Gespeichert werden nur Tag und Monat, die Saison wiederholt sich also jährlich.\n\n**Die Nachführung läuft {active_window}. Die Storen ruhen {paused_window}.**\n\nWährend der Pause rechnet die Gruppe die Sonnenposition weiter, fährt aber keine Store mehr. Beim ersten Zyklus mit Sonne über dem Horizont fährt jede Store einmalig in die Ruheposition und wird danach in Ruhe gelassen.",
+        "data": {
+          "season_pause_enabled": "Auf eine Saison beschränken",
+          "season_start": "Saison beginnt",
+          "season_end": "Saison endet",
+          "season_rest_position_percent": "Ruheposition"
+        },
+        "data_description": {
+          "season_pause_enabled": "Wenn deaktiviert, steuert die Gruppe das ganze Jahr über.",
+          "season_start": "Erster Tag im Jahr, an dem die Nachführung läuft.",
+          "season_end": "Letzter Tag, an dem die Nachführung läuft. Ein Ende vor dem Start, z.B. 1. November bis 28. Februar, läuft über den Jahreswechsel.",
+          "season_rest_position_percent": "Position, in die jede Store beim Beginn der Pause einmalig fährt (0%=geschlossen, 100%=offen). Eine Store mit manuell geschlossenen Lamellen bleibt unangetastet."
+        }
       }
+    },
+    "error": {
+      "invalid_season_date": "Bitte einen gültigen Tag für die Saisongrenze wählen."
     }
   },
   "entity": {
+    "binary_sensor": {
+      "seasonal_pause": {
+        "name": "Saisonpause"
+      }
+    },
     "number": {
       "slat_width": {
         "name": "Lamellenbreite"
@@ -199,6 +231,17 @@
       },
       "exit_paused": {
         "name": "Tages-Pause"
+      },
+      "season_pause": {
+        "name": "Saisonplan"
+      }
+    },
+    "select": {
+      "season_start": {
+        "name": "Saison beginnt"
+      },
+      "season_end": {
+        "name": "Saison endet"
       }
     }
   },

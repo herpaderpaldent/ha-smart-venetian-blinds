@@ -23,7 +23,10 @@ from custom_components.smart_venetian_blinds.config_flow_handler.schemas.group i
     get_group_reconfigure_schema,
     get_group_schema,
 )
-from custom_components.smart_venetian_blinds.config_flow_handler.schemas.options import get_options_schema
+from custom_components.smart_venetian_blinds.config_flow_handler.schemas.options import (
+    get_options_schema,
+    get_season_schema,
+)
 
 __all__ = [
     "get_cover_reconfigure_schema",
@@ -33,4 +36,5 @@ __all__ = [
     "get_group_schema",
     "get_options_schema",
     "get_protection_schema",
+    "get_season_schema",
 ]
