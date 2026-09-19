@@ -68,7 +68,9 @@ logbook:
 # https://www.home-assistant.io/integrations/conversation/
 # conversation:
 # Note: Uncomment to enable voice assistant/conversation features
-# Dependencies (hassil, home-assistant-intents) are pre-installed in bootstrap
+# hassil and home-assistant-intents are installed by script/setup/bootstrap, which resolves
+# the requirements of Home Assistant's base components from their manifests (conversation is
+# in that closure because ai_task imports it). Home Assistant installs the rest on demand.
 
 # https://www.home-assistant.io/integrations/webhook/
 webhook:

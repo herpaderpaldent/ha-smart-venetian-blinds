@@ -43,6 +43,21 @@ if pkill -f "debugpy.*5678"; then
 fi
 sleep 1  # Give processes time to terminate
 
+# Port 8123 (Home Assistant) and 5678 (debugpy) are machine-wide, and the pkill above is
+# deliberately scoped to this worktree's config directory so it never touches another worktree's
+# instance. That means a second worktree can still be holding the port - Home Assistant would
+# start, fail to bind, and leave a frontend that never loads. Say so up front instead.
+if command -v lsof >/dev/null 2>&1; then
+    PORT_OWNER_PID="$(lsof -nP -tiTCP:8123 -sTCP:LISTEN 2>/dev/null | head -1 || true)"
+    if [[ -n "$PORT_OWNER_PID" ]]; then
+        log_error "Port 8123 is already in use by PID $PORT_OWNER_PID"
+        log_info "Only one Home Assistant can run per machine (ports 8123 and 5678)."
+        log_info "Holder: $(ps -o command= -p "$PORT_OWNER_PID" 2>/dev/null | cut -c1-140)"
+        log_info "Stop that instance first, then run ${BOLD}script/develop${NC} again."
+        exit 1
+    fi
+fi
+
 # Clean up critical issues (accidental package installations)
 # Uses minimal mode to avoid deleting useful caches
 "$SCRIPT_DIR/clean" --minimal

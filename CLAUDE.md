@@ -24,9 +24,12 @@ script/spell              # Spellcheck
 
 # Local Home Assistant testing
 ./script/develop          # Start HA on port 8123 with integration loaded
+                          # Stops this worktree's own instance first - no manual pkill needed
 
-# Force restart (kills existing instance)
-pkill -f "hass --config" || true && pkill -f "debugpy.*5678" || true && ./script/develop
+# Emergency cleanup only, if a stale process survived script/develop.
+# Keep the path filter: a bare `pkill -f "hass --config"` kills every Home Assistant
+# on the machine, including instances belonging to other worktrees.
+pkill -f "hass --config.*${PWD}/config" || true
 
 # Validate against HA standards
 script/hassfest           # Official Home Assistant validation
@@ -37,6 +40,11 @@ script/test --cov-html    # With coverage report
 ```
 
 **When to restart HA:** After modifying Python files, `manifest.json`, `services.yaml`, translations, or config flow changes.
+
+**One Home Assistant per machine:** port 8123 and the debugpy port 5678 are machine-wide, so two
+worktrees cannot run Home Assistant at the same time. `script/develop` only stops the instance
+belonging to its own worktree; if another worktree is already running one, it refuses to start and
+names the process holding the port. Stop that instance first.
 
 **Logs:** Live in terminal running `./script/develop`, or in `config/home-assistant.log`
 

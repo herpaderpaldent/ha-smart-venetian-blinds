@@ -134,9 +134,43 @@ fi
 # in requirements_test.txt. This avoids fragile direct HA version pinning against CI Python
 # version constraints (HA 2026.3+ requires Python 3.14, 2026.2.x works on Python 3.13).
 
+# Home Assistant installs a component's requirements when that component is set up. The base
+# components behind homeassistant.helpers.service._base_components() are only ever *imported*
+# (to validate service schemas), never set up in a minimal dev config - so nobody installs their
+# requirements. A single missing package kills the websocket handler and the frontend hangs on
+# "Loading data" with {"code":"unknown_error"}. Resolve the pins from the installed HA manifests
+# instead of hardcoding them, so they follow the Home Assistant version automatically.
+log_header "Installing Home Assistant base component requirements"
+BASE_REQUIREMENTS_FILE="$(mktemp)"
+trap 'rm -f "$BASE_REQUIREMENTS_FILE"' EXIT
+if python3 "$SCRIPT_DIR/ha-base-requirements" > "$BASE_REQUIREMENTS_FILE"; then
+    log_info "Resolved $(wc -l < "$BASE_REQUIREMENTS_FILE" | tr -d ' ') requirements from Home Assistant manifests"
+    uv pip install --requirement "$BASE_REQUIREMENTS_FILE"
+else
+    log_error "Could not resolve base component requirements"
+    log_info "Home Assistant startup will work, but the frontend will fail with 'unknown_error'"
+    exit 1
+fi
+
+# The ffmpeg integration is a dependency of tts, which Home Assistant sets up during onboarding.
+# The ha-ffmpeg Python package above only wraps the ffmpeg binary - without it Home Assistant
+# logs a FileNotFoundError traceback on every start. Not fatal, so warn instead of failing.
+log_header "Checking optional system tools"
+if command -v ffmpeg >/dev/null 2>&1; then
+    log_success "ffmpeg found"
+else
+    log_warning "ffmpeg binary not found - Home Assistant will log an error when setting up tts"
+    if command -v brew >/dev/null 2>&1; then
+        log_info "Install it with: ${BOLD}brew install ffmpeg${NC}"
+    else
+        log_info "Install it with: ${BOLD}sudo apt-get install ffmpeg${NC}"
+    fi
+fi
+
 # Only install pre-commit hooks in local development, not in CI
 # GITHUB_ACTIONS is always set to "true" in GitHub Actions environments
-if [[ -d ".git" && -z "${GITHUB_ACTIONS:-}" ]]; then
+# Use -e rather than -d: in a Git worktree, .git is a file pointing at the real Git directory
+if [[ -e ".git" && -z "${GITHUB_ACTIONS:-}" ]]; then
     log_header "Installing pre-commit hooks"
     set +e
     pre-commit install || log_warning "Failed to install pre-commit hooks"

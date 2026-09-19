@@ -28,10 +28,13 @@ async-timeout>=4.0.0
 **Includes:**
 
 - `pyright` - Type checker (we prefer pyright over HA's mypy for better IDE integration)
+- `ruff` - Linting and formatting
+- `codespell` - Spell checking
+- `pre-commit` - Git hook framework (`script/setup/bootstrap` runs `pre-commit install`)
 - `colorlog` - Colored logging for development scripts
 - Performance tools (`zlib_ng`, `isal`) - Optional optimization packages
 
-**Note:** Most development tools (ruff, pre-commit, codespell, pylint) are already provided by Home Assistant core's `requirements_test.txt` and `requirements_test_pre_commit.txt`, which are installed automatically via `script/setup/bootstrap`.
+**Note:** These tools used to come from Home Assistant core's `requirements_test_pre_commit.txt`. That file is not part of the `homeassistant` wheel, so this project pins them itself.
 
 ### `requirements_test.txt` - Testing Framework
 
@@ -92,37 +95,53 @@ aiohttp>=3.8.0
 
 ## 🚀 Bootstrap Script
 
-The `script/setup/bootstrap` automatically installs dependencies from multiple sources:
+`script/setup/bootstrap` creates the virtual environment and installs everything needed to run and test the integration.
 
-### From Home Assistant Core
+### From this project
 
-**Version:** Configured via `HA_VERSION` in `.devcontainer/devcontainer.json` (currently `2026.12.3`)
+1. `requirements_dev.txt` - development tools (pyright, ruff, codespell, pre-commit, colorlog, performance packages)
+2. `requirements_test.txt` - `pytest-homeassistant-custom-component`, which pulls in Home Assistant itself plus the full pytest stack
+3. `requirements.txt` - this integration's runtime dependencies (currently none)
 
-1. **Runtime dependencies** (`requirements_all.txt`)
-   - All packages that Home Assistant integrations might need
-   - Includes aiohttp, async-timeout, and hundreds of other packages
+Home Assistant is **not** pinned directly. It arrives as a transitive dependency of
+`pytest-homeassistant-custom-component`, which keeps the Home Assistant version and the Python
+version constraints consistent between local development and CI.
 
-2. **Test dependencies** (`requirements_test.txt`)
-   - pytest and all pytest plugins (pytest-asyncio, pytest-aiohttp, pytest-cov, pytest-timeout, pytest-xdist)
-   - Testing utilities (coverage, freezegun, requests-mock, respx)
-   - mypy-dev for type checking (we use pyright instead)
+### From the installed Home Assistant
 
-3. **Pre-commit dependencies** (`requirements_test_pre_commit.txt`)
-   - ruff (linting and formatting)
-   - codespell (spell checking)
-   - pre-commit (hook framework)
-   - pylint (linting)
+4. **Base component requirements**, resolved by `script/setup/ha-base-requirements`
 
-4. **Home Assistant core** (`homeassistant==$HA_VERSION`)
-   - The full Home Assistant installation
+   Home Assistant installs a component's `requirements` when that component is *set up*. But
+   `homeassistant.helpers.service._base_components()` *imports* ~19 entity components
+   (`ai_task`, `camera`, `climate`, `cover`, `light`, `media_player`, `notify`, ...) to validate
+   service call schemas, and those modules import their own dependencies at module level. In a
+   minimal dev config none of them is ever set up, so nobody installs their packages. One missing
+   package raises `ModuleNotFoundError` inside the websocket handler, the frontend only sees
+   `{"code": "unknown_error"}`, and onboarding hangs forever on "Loading data".
 
-### From This Project
+   `script/setup/ha-base-requirements` derives these packages from the *installed* Home Assistant
+   instead of hardcoding them:
 
-- `requirements_dev.txt` - Additional development tools this project uses (pyright, colorlog, performance packages)
-- `requirements_test.txt` - Custom component testing utilities
-- `requirements.txt` - This integration's runtime dependencies (if any)
+   - it reads the component list out of `helpers/service.py` with `ast`
+   - it follows each component's `manifest.json` `dependencies` recursively
+   - it prints the union of their already-pinned `requirements`
 
-This approach means this project only needs to maintain a minimal set of dependencies that are specific to this integration, while leveraging the comprehensive dependency management from Home Assistant core.
+   For Home Assistant 2026.2.3 that resolves to `PyTurboJPEG`, `av`, `ha-ffmpeg`, `hassil`,
+   `home-assistant-intents`, `mutagen`, `numpy`, `pymicro-vad` and `pyspeex-noise`. Because the
+   list is derived rather than pinned, a Home Assistant upgrade does not silently reintroduce the
+   bug. Run it by hand to see where each package comes from:
+
+   ```bash
+   script/setup/ha-base-requirements --explain
+   ```
+
+To check that the environment is complete:
+
+```bash
+python3 -c "from homeassistant.helpers.service import _base_components; print(len(_base_components()))"
+```
+
+It must print the number of base components (19 on Home Assistant 2026.2.3) without raising.
 
 ## 🔍 hacs.json vs manifest.json
 
