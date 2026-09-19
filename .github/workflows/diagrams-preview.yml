@@ -1,0 +1,131 @@
+name: Diagram preview
+
+# Runs script/visualize on every PR that can affect the behavior diagrams.
+#
+# Two things happen here:
+#   1. The script runs against the real pipeline. If an import breaks — the way
+#      homeassistant.helpers.storage did in #108 — the job fails, instead of the
+#      breakage surfacing at release time.
+#   2. The freshly rendered SVGs are force-pushed to a throwaway orphan branch
+#      (diagrams-preview/pr-<N>) and embedded in a sticky PR comment, so the
+#      rendered result is reviewable without the ~10k-line-per-file SVG churn
+#      landing in the PR diff. The branch is deleted by diagrams-preview-cleanup.yml
+#      when the PR closes.
+#
+# docs/images/ is NOT written by this workflow. Those are still regenerated
+# locally as step 2 of the release process in CLAUDE.md.
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "custom_components/smart_venetian_blinds/**"
+      - "script/visualize"
+      - "requirements_visualize.txt"
+      - ".github/workflows/diagrams-preview.yml"
+
+permissions: {}
+
+concurrency:
+  group: diagrams-preview-${{ github.event.number }}
+  cancel-in-progress: true
+
+jobs:
+  preview:
+    name: "Render behavior diagrams"
+    runs-on: "ubuntu-latest"
+
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.13"
+
+      - name: Install visualize dependencies
+        run: pip install -r requirements_visualize.txt
+
+      # The check itself. Runs for fork PRs too, where the steps below are skipped
+      # because the token is read-only.
+      - name: Generate diagrams
+        run: python3 script/visualize
+
+      - name: Push preview branch
+        id: push
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          BRANCH: diagrams-preview/pr-${{ github.event.number }}
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          WORK="$RUNNER_TEMP/diagrams-preview"
+          mkdir -p "$WORK"
+          cp docs/images/*.svg "$WORK/"
+
+          cd "$WORK"
+          git init -q -b "$BRANCH"
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -q -m "diagram preview for PR #${{ github.event.number }} (${GITHUB_SHA::8})"
+
+          # Single-commit orphan branch, replaced wholesale on every push.
+          git push -q --force \
+            "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "$BRANCH"
+
+          # Pin the comment's image URLs to this commit: camo caches by URL, so a
+          # branch-name URL would keep serving the previous run's diagrams.
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Upsert preview comment
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PREVIEW_SHA: ${{ steps.push.outputs.sha }}
+        run: |
+          set -euo pipefail
+          MARKER="<!-- diagrams-preview -->"
+          RAW="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${PREVIEW_SHA}"
+          BODY="$RUNNER_TEMP/comment.md"
+
+          {
+            echo "$MARKER"
+            echo "### Behavior diagram preview"
+            echo
+            echo "Rendered from ${GITHUB_SHA::8} by \`script/visualize\`."
+            echo "These are a preview only — \`docs/images/\` is untouched by this PR and is"
+            echo "regenerated as part of the release process."
+            echo
+            for entry in \
+              "vanilla.svg:Vanilla behaviour" \
+              "east.svg:East facade" \
+              "obstacle.svg:Obstacle elevation" \
+              "sleep.svg:Sleep protection" \
+              "exit.svg:Exit mode"; do
+              file="${entry%%:*}"
+              label="${entry#*:}"
+              echo "<details open>"
+              echo "<summary><b>${label}</b></summary>"
+              echo
+              echo "<img src=\"${RAW}/${file}\" width=\"760\" alt=\"${label}\">"
+              echo
+              echo "</details>"
+              echo
+            done
+            echo "<sub>Preview branch \`diagrams-preview/pr-${{ github.event.number }}\` is deleted when this PR closes.</sub>"
+          } > "$BODY"
+
+          ID=$(gh api "repos/${GITHUB_REPOSITORY}/issues/${{ github.event.number }}/comments" \
+            --paginate --jq "[.[] | select(.body | startswith(\"$MARKER\")) | .id] | first")
+
+          if [ -n "$ID" ] && [ "$ID" != "null" ]; then
+            gh api -X PATCH "repos/${GITHUB_REPOSITORY}/issues/comments/${ID}" -F "body=@${BODY}" --silent
+          else
+            gh api -X POST "repos/${GITHUB_REPOSITORY}/issues/${{ github.event.number }}/comments" -F "body=@${BODY}" --silent
+          fi
