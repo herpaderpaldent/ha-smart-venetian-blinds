@@ -13,11 +13,14 @@ Responsibilities:
 
 from __future__ import annotations
 
-import asyncio
-import contextlib
 from typing import TYPE_CHECKING
 
 from custom_components.smart_venetian_blinds.const import LOGGER
+from custom_components.smart_venetian_blinds.cover_control.position import (
+    async_wait_for_position,
+    is_at_position,
+    read_position,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
@@ -25,7 +28,6 @@ if TYPE_CHECKING:
     from custom_components.smart_venetian_blinds.cover_control.context import CoverContext
     from custom_components.smart_venetian_blinds.cover_control.controller import CoverConfig
 
-from homeassistant.components.cover import ATTR_CURRENT_POSITION
 from homeassistant.const import ATTR_ENTITY_ID, SERVICE_SET_COVER_POSITION, SERVICE_SET_COVER_TILT_POSITION
 
 
@@ -56,8 +58,6 @@ class NoSunPipe:
     is effectively a conditional set_to_percent for blocking reflected/diffuse glare,
     active when the sun was tracking the facade earlier today.
     """
-
-    POSITION_TOLERANCE_PERCENT = 2
 
     def __init__(self, position_timeout_sec: int) -> None:
         """Initialize with position timeout for the no-sun open action."""
@@ -147,14 +147,7 @@ class NoSunPipe:
 
     async def _no_sun_open(self, ctx: CoverContext) -> bool:
         """No-sun behavior: raise cover to fully open position."""
-        state = ctx.hass.states.get(ctx.config.entity_id)
-        current_position: int | None = None
-        if state is not None:
-            raw = state.attributes.get(ATTR_CURRENT_POSITION)
-            with contextlib.suppress(ValueError, TypeError):
-                current_position = int(raw) if raw is not None else None
-
-        if current_position is not None and abs(current_position - 100) <= self.POSITION_TOLERANCE_PERCENT:
+        if is_at_position(read_position(ctx.hass, ctx.config.entity_id), 100):
             return True
 
         LOGGER.debug("Cover %s: no sun — raising to 100%%", ctx.config.entity_id)
@@ -164,7 +157,7 @@ class NoSunPipe:
             {ATTR_ENTITY_ID: ctx.config.entity_id, "position": 100},
             blocking=True,
         )
-        await self._wait_for_position(ctx, 100)
+        await async_wait_for_position(ctx.hass, ctx.config.entity_id, 100, self._position_timeout_sec)
         return True
 
     async def _no_sun_close(self, ctx: CoverContext) -> bool:
@@ -197,28 +190,3 @@ class NoSunPipe:
         base = float(config.manual_close_threshold) if config.respect_manual_close else 0.0
         angle_floor = 100.0 * (1.0 - config.max_angle / 90.0) if config.max_angle < 90 else 0.0
         return max(base, float(config.min_tilt_percent), angle_floor)
-
-    async def _wait_for_position(self, ctx: CoverContext, target_position: int) -> bool:
-        """Wait for cover to reach target position."""
-        elapsed = 0.0
-        interval = 0.5
-
-        while elapsed < self._position_timeout_sec:
-            state = ctx.hass.states.get(ctx.config.entity_id)
-            if state is not None:
-                raw = state.attributes.get(ATTR_CURRENT_POSITION)
-                try:
-                    current = int(raw) if raw is not None else None
-                except (ValueError, TypeError):
-                    current = None
-                if current is not None and abs(current - target_position) <= self.POSITION_TOLERANCE_PERCENT:
-                    return True
-            await asyncio.sleep(interval)
-            elapsed += interval
-
-        LOGGER.warning(
-            "Timeout waiting for %s to reach position %d%%",
-            ctx.config.entity_id,
-            target_position,
-        )
-        return False

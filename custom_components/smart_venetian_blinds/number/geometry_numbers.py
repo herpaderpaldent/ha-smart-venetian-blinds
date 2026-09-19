@@ -9,19 +9,15 @@ Provides editable number entities for:
 from __future__ import annotations
 
 from custom_components.smart_venetian_blinds.const import (
-    ATTRIBUTION,
     CONF_SLAT_SPACING,
     CONF_SLAT_WIDTH,
     DEFAULT_SLAT_SPACING,
     DEFAULT_SLAT_WIDTH,
-    DOMAIN,
 )
 from custom_components.smart_venetian_blinds.coordinator import SmartVenetianBlindsDataUpdateCoordinator
-from custom_components.smart_venetian_blinds.utils.string_helpers import slugify_name
+from custom_components.smart_venetian_blinds.entity import SmartVenetianBlindsEntity
 from homeassistant.components.number import NumberDeviceClass, NumberEntity, NumberEntityDescription, NumberMode
 from homeassistant.const import EntityCategory, UnitOfLength
-from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 SLAT_WIDTH_DESCRIPTION = NumberEntityDescription(
     key="slat_width",
@@ -50,25 +46,12 @@ SLAT_SPACING_DESCRIPTION = NumberEntityDescription(
 )
 
 
-class SlatWidthNumber(CoordinatorEntity[SmartVenetianBlindsDataUpdateCoordinator], NumberEntity):
+class SlatWidthNumber(SmartVenetianBlindsEntity, NumberEntity):
     """Number entity for slat width configuration."""
-
-    _attr_attribution = ATTRIBUTION
-    _attr_has_entity_name = True
-    entity_description = SLAT_WIDTH_DESCRIPTION
 
     def __init__(self, coordinator: SmartVenetianBlindsDataUpdateCoordinator) -> None:
         """Initialize the number entity."""
-        super().__init__(coordinator)
-        self._attr_unique_id = f"{coordinator.config_entry.entry_id}_slat_width"
-        self.entity_id = f"number.{slugify_name(coordinator.config_entry.title)}_slat_width"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, coordinator.config_entry.entry_id)},
-            name=coordinator.config_entry.title,
-            manufacturer="Smart Venetian Blinds",
-            model="Window Group",
-            entry_type=DeviceEntryType.SERVICE,
-        )
+        super().__init__(coordinator, SLAT_WIDTH_DESCRIPTION, platform="number")
 
     @property
     def native_value(self) -> float:
@@ -85,25 +68,12 @@ class SlatWidthNumber(CoordinatorEntity[SmartVenetianBlindsDataUpdateCoordinator
         self.coordinator.trigger_update()
 
 
-class SlatSpacingNumber(CoordinatorEntity[SmartVenetianBlindsDataUpdateCoordinator], NumberEntity):
+class SlatSpacingNumber(SmartVenetianBlindsEntity, NumberEntity):
     """Number entity for slat spacing configuration."""
-
-    _attr_attribution = ATTRIBUTION
-    _attr_has_entity_name = True
-    entity_description = SLAT_SPACING_DESCRIPTION
 
     def __init__(self, coordinator: SmartVenetianBlindsDataUpdateCoordinator) -> None:
         """Initialize the number entity."""
-        super().__init__(coordinator)
-        self._attr_unique_id = f"{coordinator.config_entry.entry_id}_slat_spacing"
-        self.entity_id = f"number.{slugify_name(coordinator.config_entry.title)}_slat_spacing"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, coordinator.config_entry.entry_id)},
-            name=coordinator.config_entry.title,
-            manufacturer="Smart Venetian Blinds",
-            model="Window Group",
-            entry_type=DeviceEntryType.SERVICE,
-        )
+        super().__init__(coordinator, SLAT_SPACING_DESCRIPTION, platform="number")
 
     @property
     def native_value(self) -> float:

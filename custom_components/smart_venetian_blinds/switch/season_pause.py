@@ -8,17 +8,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from custom_components.smart_venetian_blinds.const import ATTRIBUTION, CONF_SEASON_PAUSE_ENABLED
+from custom_components.smart_venetian_blinds.const import CONF_SEASON_PAUSE_ENABLED
 from custom_components.smart_venetian_blinds.coordinator import SmartVenetianBlindsDataUpdateCoordinator
-from custom_components.smart_venetian_blinds.entity_utils import (
-    async_merge_entry_options,
-    build_entity_id,
-    create_window_group_device_info,
-)
+from custom_components.smart_venetian_blinds.entity import SmartVenetianBlindsEntity
+from custom_components.smart_venetian_blinds.entity_utils import async_merge_entry_options
 from custom_components.smart_venetian_blinds.season import SeasonWindow
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
 from homeassistant.const import EntityCategory
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 SEASON_PAUSE_DESCRIPTION = SwitchEntityDescription(
     key="season_pause",
@@ -28,7 +24,7 @@ SEASON_PAUSE_DESCRIPTION = SwitchEntityDescription(
 )
 
 
-class SeasonPauseSwitch(CoordinatorEntity[SmartVenetianBlindsDataUpdateCoordinator], SwitchEntity):
+class SeasonPauseSwitch(SmartVenetianBlindsEntity, SwitchEntity):
     """
     Switch enabling the seasonal pause window for a window group.
 
@@ -36,16 +32,9 @@ class SeasonPauseSwitch(CoordinatorEntity[SmartVenetianBlindsDataUpdateCoordinat
     season applies and the group stops driving covers outside it.
     """
 
-    _attr_attribution = ATTRIBUTION
-    _attr_has_entity_name = True
-    entity_description = SEASON_PAUSE_DESCRIPTION
-
     def __init__(self, coordinator: SmartVenetianBlindsDataUpdateCoordinator) -> None:
         """Initialize the switch."""
-        super().__init__(coordinator)
-        self._attr_unique_id = f"{coordinator.config_entry.entry_id}_season_pause"
-        self.entity_id = build_entity_id("switch", coordinator.config_entry.title, SEASON_PAUSE_DESCRIPTION.key)
-        self._attr_device_info = create_window_group_device_info(coordinator.config_entry)
+        super().__init__(coordinator, SEASON_PAUSE_DESCRIPTION, platform="switch")
 
     @property
     def is_on(self) -> bool:

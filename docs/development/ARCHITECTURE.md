@@ -27,6 +27,7 @@ custom_components/smart_venetian_blinds/
 │   ├── __init__.py
 │   ├── context.py           # CoverContext (per-cycle) and CoverTrackingState (persisted)
 │   ├── controller.py        # CoverController, CoverConfig, Pipeline
+│   ├── position.py          # Shared cover position read/wait helpers for the pipes
 │   └── pipes/               # Pipeline stages (chain of responsibility)
 │       ├── __init__.py
 │       ├── enabled.py       # EnabledPipe — skip disabled covers
@@ -52,10 +53,12 @@ custom_components/smart_venetian_blinds/
 │       └── __init__.py
 ├── entity/                  # Base entity package
 │   ├── __init__.py          # Exports SmartVenetianBlindsEntity
-│   └── base.py              # Base entity class implementation
+│   └── base.py              # Base class for all window group entities
 ├── entity_utils/            # Entity helper utilities
 │   ├── __init__.py
-│   └── device_info.py       # Device information helpers (create_window_group_device_info)
+│   ├── device_info.py       # Device information helpers (create_window_group_device_info)
+│   ├── entity_ids.py        # Language-independent entity ids (build_entity_id)
+│   └── options.py           # Config entry option merging (async_merge_entry_options)
 ├── sensor/                  # Sensor platform (slat angle, sun position)
 │   ├── __init__.py          # Platform setup
 │   └── slat_sensors.py      # Slat angle and sun position sensor entities
@@ -68,7 +71,7 @@ custom_components/smart_venetian_blinds/
 │   └── apply_now.py         # Force-apply current calculation to covers
 ├── utils/                   # General utilities
 │   ├── __init__.py
-│   └── string_helpers.py    # String manipulation helpers (slugify_name, truncate_string)
+│   └── string_helpers.py    # String manipulation helpers (truncate_string, sanitize_string)
 └── translations/            # Localization files
     ├── en.json              # English translations
     └── de.json              # German translations
@@ -118,6 +121,7 @@ Applies calculated slat angles to physical cover entities via a **pipeline (chai
 
 - `controller.py` - `CoverController`, `CoverConfig`, `Pipeline`
 - `context.py` - `CoverContext` (per-cycle state) and `CoverTrackingState` (persisted per cover)
+- `position.py` - `read_position`, `is_at_position`, `async_wait_for_position` and `POSITION_TOLERANCE_PERCENT`, shared by every pipe that reads or waits on a cover position. Plain functions rather than a base class: the pipes are structurally typed against the `CoverPipe` protocol and share no ancestor
 - `pipes/` - Individual pipeline stages
 
 **Pipeline execution order:**
@@ -220,14 +224,18 @@ Year.
 
 **Package:** `entity/`
 
-Provides common functionality for all entities in the integration:
+Provides common functionality for every window group entity:
 
-- Device information
+- Device information (via `entity_utils.create_window_group_device_info`)
 - Unique ID generation (`{entry_id}_{description.key}`)
+- Entity ID generation (via `entity_utils.build_entity_id`, so ids do not depend on the UI language)
 - Coordinator integration
 - Availability tracking
 
 **Key class:** `SmartVenetianBlindsEntity` (in `entity/base.py`)
+
+The per-cover `ExitModeSwitch` is the one entity that does not use it: it is named
+after its cover rather than the group, and its unique id carries the subentry id.
 
 ## Platform Organization
 
@@ -241,8 +249,11 @@ Each platform (binary_sensor, number, select, sensor, switch) follows this patte
 
 **Current platforms:**
 
-- `sensor/` - Slat angle and sun position sensors
-- `switch/` - Auto control toggle per window group
+- `binary_sensor/` - Seasonal pause state per window group
+- `number/` - Slat geometry (width, spacing) per window group
+- `select/` - Season start and end per window group
+- `sensor/` - Slat angle, slat tilt and profile angle sensors
+- `switch/` - Auto control and seasonal pause per window group, exit mode per cover
 
 Platform entities inherit from both:
 

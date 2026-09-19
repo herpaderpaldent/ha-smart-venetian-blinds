@@ -9,13 +9,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from custom_components.smart_venetian_blinds.const import ATTRIBUTION
 from custom_components.smart_venetian_blinds.coordinator import SmartVenetianBlindsDataUpdateCoordinator
-from custom_components.smart_venetian_blinds.entity_utils import build_entity_id, create_window_group_device_info
+from custom_components.smart_venetian_blinds.entity import SmartVenetianBlindsEntity
 from custom_components.smart_venetian_blinds.season import SeasonWindow
 from homeassistant.components.binary_sensor import BinarySensorEntity, BinarySensorEntityDescription
 from homeassistant.const import EntityCategory
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 import homeassistant.util.dt as dt_util
 
 SEASONAL_PAUSE_DESCRIPTION = BinarySensorEntityDescription(
@@ -26,7 +24,7 @@ SEASONAL_PAUSE_DESCRIPTION = BinarySensorEntityDescription(
 )
 
 
-class SeasonalPauseBinarySensor(CoordinatorEntity[SmartVenetianBlindsDataUpdateCoordinator], BinarySensorEntity):
+class SeasonalPauseBinarySensor(SmartVenetianBlindsEntity, BinarySensorEntity):
     """
     Binary sensor reporting the seasonal pause state of a window group.
 
@@ -34,21 +32,12 @@ class SeasonalPauseBinarySensor(CoordinatorEntity[SmartVenetianBlindsDataUpdateC
     keeps calculating sun position but no longer moves any covers.
     """
 
-    _attr_attribution = ATTRIBUTION
-    _attr_has_entity_name = True
-    entity_description = SEASONAL_PAUSE_DESCRIPTION
-
     def __init__(
         self,
         coordinator: SmartVenetianBlindsDataUpdateCoordinator,
     ) -> None:
         """Initialize the binary sensor."""
-        super().__init__(coordinator)
-        self._attr_unique_id = f"{coordinator.config_entry.entry_id}_seasonal_pause"
-        self.entity_id = build_entity_id(
-            "binary_sensor", coordinator.config_entry.title, SEASONAL_PAUSE_DESCRIPTION.key
-        )
-        self._attr_device_info = create_window_group_device_info(coordinator.config_entry)
+        super().__init__(coordinator, SEASONAL_PAUSE_DESCRIPTION, platform="binary_sensor")
 
     @property
     def _season(self) -> SeasonWindow:

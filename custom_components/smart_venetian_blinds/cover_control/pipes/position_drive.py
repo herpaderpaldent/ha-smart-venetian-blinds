@@ -6,7 +6,11 @@ import asyncio
 from typing import TYPE_CHECKING
 
 from custom_components.smart_venetian_blinds.const import LOGGER
-from homeassistant.components.cover import ATTR_CURRENT_POSITION
+from custom_components.smart_venetian_blinds.cover_control.position import (
+    async_wait_for_position,
+    is_at_position,
+    read_position,
+)
 from homeassistant.const import ATTR_ENTITY_ID, SERVICE_SET_COVER_POSITION
 
 if TYPE_CHECKING:
@@ -28,8 +32,6 @@ class PositionDrivePipe:
     motor has physically finished travelling.
     """
 
-    POSITION_TOLERANCE_PERCENT = 2
-
     def __init__(self, position_timeout_sec: int, settling_delay_sec: int = 5) -> None:
         """Initialize with position timeout and optional post-drive settling delay."""
         self._position_timeout_sec = position_timeout_sec
@@ -37,23 +39,12 @@ class PositionDrivePipe:
 
     async def handle(self, ctx: CoverContext, call_next: Callable[[], Awaitable[bool]]) -> bool:
         """Handle pipe step."""
-        state = ctx.hass.states.get(ctx.config.entity_id)
-        if state is None:
-            LOGGER.warning("Cannot get state for %s, skipping", ctx.config.entity_id)
-            return False
-
-        raw_position = state.attributes.get(ATTR_CURRENT_POSITION)
-        if raw_position is None:
+        current_position = read_position(ctx.hass, ctx.config.entity_id)
+        if current_position is None:
             LOGGER.warning("Cannot get position for %s, skipping", ctx.config.entity_id)
             return False
 
-        try:
-            current_position = int(raw_position)
-        except (ValueError, TypeError):
-            LOGGER.warning("Invalid position value for %s, skipping", ctx.config.entity_id)
-            return False
-
-        if abs(current_position - ctx.config.drive_position) > self.POSITION_TOLERANCE_PERCENT:
+        if not is_at_position(current_position, ctx.config.drive_position):
             LOGGER.debug(
                 "Driving %s from %d%% to %d%%",
                 ctx.config.entity_id,
@@ -66,7 +57,12 @@ class PositionDrivePipe:
                 {ATTR_ENTITY_ID: ctx.config.entity_id, "position": ctx.config.drive_position},
                 blocking=True,
             )
-            await self._wait_for_position(ctx, ctx.config.drive_position)
+            await async_wait_for_position(
+                ctx.hass,
+                ctx.config.entity_id,
+                ctx.config.drive_position,
+                self._position_timeout_sec,
+            )
             if self._settling_delay_sec > 0:
                 LOGGER.debug(
                     "Cover %s: settling delay %ds after position drive",
@@ -76,29 +72,3 @@ class PositionDrivePipe:
                 await asyncio.sleep(self._settling_delay_sec)
 
         return await call_next()
-
-    async def _wait_for_position(self, ctx: CoverContext, target_position: int) -> bool:
-        """Wait for cover to reach target position."""
-        elapsed = 0.0
-        interval = 0.5
-
-        while elapsed < self._position_timeout_sec:
-            state = ctx.hass.states.get(ctx.config.entity_id)
-            if state is not None:
-                raw = state.attributes.get(ATTR_CURRENT_POSITION)
-                try:
-                    current = int(raw) if raw is not None else None
-                except (ValueError, TypeError):
-                    current = None
-                if current is not None and abs(current - target_position) <= self.POSITION_TOLERANCE_PERCENT:
-                    LOGGER.debug("Cover %s reached position %d%%", ctx.config.entity_id, current)
-                    return True
-            await asyncio.sleep(interval)
-            elapsed += interval
-
-        LOGGER.warning(
-            "Timeout waiting for %s to reach position %d%%",
-            ctx.config.entity_id,
-            target_position,
-        )
-        return False

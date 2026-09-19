@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
-import asyncio
-import contextlib
 from typing import TYPE_CHECKING
 
 from custom_components.smart_venetian_blinds.const import LOGGER
 from custom_components.smart_venetian_blinds.cover_control.pipes.no_sun import is_no_sun
-from homeassistant.components.cover import ATTR_CURRENT_POSITION, ATTR_CURRENT_TILT_POSITION
+from custom_components.smart_venetian_blinds.cover_control.position import (
+    async_wait_for_position,
+    is_at_position,
+    read_position,
+)
+from homeassistant.components.cover import ATTR_CURRENT_TILT_POSITION
 from homeassistant.const import ATTR_ENTITY_ID, SERVICE_SET_COVER_POSITION
 import homeassistant.util.dt as dt_util
 
@@ -44,8 +47,6 @@ class SeasonalPausePipe:
     cycle after the season resumes — just after midnight, in the dark — would look
     to ``NoSunPipe`` like a fresh no-sun period and fire its action.
     """
-
-    POSITION_TOLERANCE_PERCENT = 2
 
     def __init__(self, season: SeasonWindow, store: SeasonRestStore, position_timeout_sec: int) -> None:
         """Initialize with the group's season window, its rest store and the position timeout."""
@@ -123,12 +124,7 @@ class SeasonalPausePipe:
             LOGGER.debug("Cover %s: state unavailable, retrying season rest drive next cycle", entity_id)
             return False
 
-        current_position: int | None = None
-        raw = state.attributes.get(ATTR_CURRENT_POSITION)
-        with contextlib.suppress(ValueError, TypeError):
-            current_position = int(raw) if raw is not None else None
-
-        if current_position is not None and abs(current_position - target) <= self.POSITION_TOLERANCE_PERCENT:
+        if is_at_position(read_position(ctx.hass, entity_id), target):
             LOGGER.debug("Cover %s: seasonally paused, already at rest position %d%%", entity_id, target)
             self._store.mark_done(entity_id, self._season, today)
             return False
@@ -145,31 +141,12 @@ class SeasonalPausePipe:
             {ATTR_ENTITY_ID: entity_id, "position": target},
             blocking=True,
         )
-        await self._wait_for_position(ctx, target)
+        await async_wait_for_position(
+            ctx.hass,
+            entity_id,
+            target,
+            self._position_timeout_sec,
+            label="season rest position",
+        )
         self._store.mark_done(entity_id, self._season, today)
         return True
-
-    async def _wait_for_position(self, ctx: CoverContext, target_position: int) -> bool:
-        """Wait for the cover to reach the target position."""
-        elapsed = 0.0
-        interval = 0.5
-
-        while elapsed < self._position_timeout_sec:
-            state = ctx.hass.states.get(ctx.config.entity_id)
-            if state is not None:
-                raw = state.attributes.get(ATTR_CURRENT_POSITION)
-                try:
-                    current = int(raw) if raw is not None else None
-                except (ValueError, TypeError):
-                    current = None
-                if current is not None and abs(current - target_position) <= self.POSITION_TOLERANCE_PERCENT:
-                    return True
-            await asyncio.sleep(interval)
-            elapsed += interval
-
-        LOGGER.warning(
-            "Timeout waiting for %s to reach season rest position %d%%",
-            ctx.config.entity_id,
-            target_position,
-        )
-        return False
