@@ -9,58 +9,54 @@ from __future__ import annotations
 from typing import Any
 
 from custom_components.smart_venetian_blinds.const import (
+    CONF_SEASON_END,
     CONF_SEASON_END_DAY,
     CONF_SEASON_END_MONTH,
+    CONF_SEASON_START,
     CONF_SEASON_START_DAY,
     CONF_SEASON_START_MONTH,
 )
-from custom_components.smart_venetian_blinds.season import is_valid_month_day
+from custom_components.smart_venetian_blinds.season import parse_day_value
+
+_SEASON_DAY_FIELDS = (
+    (CONF_SEASON_START, CONF_SEASON_START_MONTH, CONF_SEASON_START_DAY),
+    (CONF_SEASON_END, CONF_SEASON_END_MONTH, CONF_SEASON_END_DAY),
+)
 
 
-def normalize_season_input(user_input: dict[str, Any]) -> dict[str, Any]:
+def normalize_season_input(user_input: dict[str, Any]) -> tuple[dict[str, Any], dict[str, str]]:
     """
-    Coerce season month/day values to integers.
+    Convert the season day dropdowns into the stored month/day values.
 
-    The month dropdown submits strings and the day box submits floats; both are
-    stored as plain integers so ``SeasonWindow`` can compare them directly.
+    The form offers a ``MM-DD`` value per boundary because Home Assistant has no
+    month/day selector; only month and day are stored, so the season repeats every
+    year. A value the dropdown cannot have produced is reported rather than stored.
 
     Args:
         user_input: Raw user input from the season options form.
 
     Returns:
-        A copy of the input with month and day values as integers.
+        The normalized input, and a mapping of field name to error key which is
+        empty when everything parsed.
     """
     normalized = dict(user_input)
-    for key in (CONF_SEASON_START_MONTH, CONF_SEASON_START_DAY, CONF_SEASON_END_MONTH, CONF_SEASON_END_DAY):
-        if key in normalized:
-            normalized[key] = int(float(normalized[key]))
-    return normalized
-
-
-def validate_season_input(user_input: dict[str, Any]) -> dict[str, str]:
-    """
-    Validate that both season boundaries are real calendar dates.
-
-    Args:
-        user_input: Normalized user input from the season options form.
-
-    Returns:
-        Mapping of field name to error key; empty when the input is valid.
-    """
     errors: dict[str, str] = {}
 
-    start_valid = is_valid_month_day(user_input[CONF_SEASON_START_MONTH], user_input[CONF_SEASON_START_DAY])
-    if not start_valid:
-        errors[CONF_SEASON_START_DAY] = "invalid_season_date"
+    for field, month_key, day_key in _SEASON_DAY_FIELDS:
+        if field not in normalized:
+            continue
+        try:
+            month, day = parse_day_value(normalized[field])
+        except (ValueError, TypeError):
+            errors[field] = "invalid_season_date"
+            continue
+        normalized.pop(field)
+        normalized[month_key] = month
+        normalized[day_key] = day
 
-    end_valid = is_valid_month_day(user_input[CONF_SEASON_END_MONTH], user_input[CONF_SEASON_END_DAY])
-    if not end_valid:
-        errors[CONF_SEASON_END_DAY] = "invalid_season_date"
-
-    return errors
+    return normalized, errors
 
 
 __all__: list[str] = [
     "normalize_season_input",
-    "validate_season_input",
 ]

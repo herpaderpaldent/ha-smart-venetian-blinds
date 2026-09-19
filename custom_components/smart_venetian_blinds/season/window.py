@@ -9,7 +9,9 @@ compared, so it repeats every year without reconfiguration.
 
 from __future__ import annotations
 
+import calendar
 from dataclasses import dataclass
+from datetime import date, timedelta
 from typing import TYPE_CHECKING
 
 from custom_components.smart_venetian_blinds.const import (
@@ -26,34 +28,36 @@ from custom_components.smart_venetian_blinds.const import (
     DEFAULT_SEASON_START_DAY,
     DEFAULT_SEASON_START_MONTH,
 )
+from custom_components.smart_venetian_blinds.season.day_options import format_day, to_day_value
+
+# A common year: the paused range is described the way it reads in three years out
+# of four. In a leap year a pause after a 28 February end really does start a day
+# earlier, which is a boundary detail no summary line should hinge on.
+_DESCRIPTION_YEAR = 2025
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
-    from datetime import date
     from typing import Any
 
-# Days per month for validation; February uses 29 so a leap-day boundary stays configurable.
-DAYS_IN_MONTH: dict[int, int] = {
-    1: 31,
-    2: 29,
-    3: 31,
-    4: 30,
-    5: 31,
-    6: 30,
-    7: 31,
-    8: 31,
-    9: 30,
-    10: 31,
-    11: 30,
-    12: 31,
-}
 
+def clamp_to_year(year: int, month: int, day: int) -> date:
+    """
+    Build a date, moving 29 February to 28 February in a common year.
 
-def is_valid_month_day(month: int, day: int) -> bool:
-    """Return True if the (month, day) pair can occur in a calendar year."""
-    if month not in DAYS_IN_MONTH:
-        return False
-    return 1 <= day <= DAYS_IN_MONTH[month]
+    A leap-day boundary stays configurable, so it has to remain renderable in
+    every year without raising.
+
+    Args:
+        year: The year to build the date in.
+        month: The stored month.
+        day: The stored day of month.
+
+    Returns:
+        A valid date in the given year.
+    """
+    if month == 2 and day == 29 and not calendar.isleap(year):
+        return date(year, 2, 28)
+    return date(year, month, day)
 
 
 @dataclass(frozen=True)
@@ -90,30 +94,84 @@ class SeasonWindow:
         """Return True if the active window spans New Year (start after end)."""
         return (self.start_month, self.start_day) > (self.end_month, self.end_day)
 
-    def is_active(self, today: date) -> bool:
-        """Return True if the given date falls inside the active season."""
+    @property
+    def start_value(self) -> str:
+        """Return the season start as a ``MM-DD`` option value."""
+        return to_day_value(self.start_month, self.start_day)
+
+    @property
+    def end_value(self) -> str:
+        """Return the season end as a ``MM-DD`` option value."""
+        return to_day_value(self.end_month, self.end_day)
+
+    @property
+    def identity(self) -> str:
+        """
+        Return a token identifying this window and its rest position.
+
+        A stored "rest drive already done" record is discarded when this token
+        changes, so editing the season or the rest position during a pause takes
+        effect instead of being silently ignored.
+        """
+        return f"{self.start_value}:{self.end_value}@{self.rest_position}"
+
+    def is_paused(self, today: date) -> bool:
+        """Return True if the group is seasonally paused on the given date."""
         if not self.enabled:
-            return True
+            return False
 
         current = (today.month, today.day)
         start = (self.start_month, self.start_day)
         end = (self.end_month, self.end_day)
 
         if self.wraps_year_end:
-            return current >= start or current <= end
-        return start <= current <= end
+            active = current >= start or current <= end
+        else:
+            active = start <= current <= end
+        return not active
 
-    def is_paused(self, today: date) -> bool:
-        """Return True if the group is seasonally paused on the given date."""
-        return not self.is_active(today)
+    def pause_period_start(self, today: date) -> date | None:
+        """
+        Return the first day of the pause period containing ``today``.
 
-    def describe(self) -> str:
-        """Return a human-readable representation of the window (for logs/diagnostics)."""
-        return f"{self.start_day:02d}.{self.start_month:02d}-{self.end_day:02d}.{self.end_month:02d}"
+        The pause runs from the day after the season ends until the day before it
+        starts again. Used to tell one year's pause from the next, so the one-time
+        rest drive happens once per pause rather than once per configuration.
+
+        Args:
+            today: The date to locate.
+
+        Returns:
+            The first paused day, or None if the group is active on ``today``.
+        """
+        if not self.is_paused(today):
+            return None
+
+        candidate = clamp_to_year(today.year, self.end_month, self.end_day) + timedelta(days=1)
+        if candidate > today:
+            candidate = clamp_to_year(today.year - 1, self.end_month, self.end_day) + timedelta(days=1)
+        return candidate
+
+    def format_window(self, language: str | None = None) -> str:
+        """Return the active window for humans, e.g. ``15 March – 15 October``."""
+        start = format_day(self.start_month, self.start_day, language)
+        end = format_day(self.end_month, self.end_day, language)
+        return f"{start} – {end}"
+
+    def format_pause(self, language: str | None = None) -> str:
+        """Return the paused part of the year for humans."""
+        after_end = clamp_to_year(_DESCRIPTION_YEAR, self.end_month, self.end_day) + timedelta(days=1)
+        before_start = clamp_to_year(_DESCRIPTION_YEAR, self.start_month, self.start_day) - timedelta(days=1)
+        start = format_day(after_end.month, after_end.day, language)
+        end = format_day(before_start.month, before_start.day, language)
+        return f"{start} – {end}"
+
+    def __str__(self) -> str:
+        """Return a compact representation for logs and diagnostics."""
+        return f"{self.start_value}..{self.end_value}"
 
 
 __all__ = [
-    "DAYS_IN_MONTH",
     "SeasonWindow",
-    "is_valid_month_day",
+    "clamp_to_year",
 ]

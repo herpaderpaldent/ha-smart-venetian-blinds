@@ -126,14 +126,12 @@ Applies calculated slat angles to physical cover entities via a **pipeline (chai
 flowchart TD
     A([Sun update]) --> B[EnabledPipe]
     B -->|disabled| Z([stop])
-    B --> C[SleepProtectionPipe]
-    C -->|tilt &lt; manual_close_threshold| Z
-    C --> S[SeasonalPausePipe]
-    S -->|"paused, rest position applied"| Z
-    S -->|"paused, sun below horizon"| Z
-    S -->|"paused, first sunlit cycle"| S1["drive to rest position<br/>set season_rest_applied = true"]
+    B --> S[SeasonalPausePipe]
+    S -->|"paused, rest drive done or expired"| Z
+    S -->|"paused, first day, sun up, slats open"| S1["drive to rest position<br/>record it as done"]
     S1 --> Z
-    S -->|in season| D[ExitPausedCheckPipe]
+    S -->|in season| C[SleepProtectionPipe]
+    C --> D[ExitPausedCheckPipe]
     D -->|exit_paused = true| Z
     D --> E[NoSunPipe]
 
@@ -158,7 +156,6 @@ flowchart TD
 |---|---|
 | `exit_paused` | Set by auto exit-detection or user switch. Cleared at start of each no-sun period. |
 | `in_no_sun` | True once the no-sun action has fired for the current no-sun period. Cleared when sun returns. |
-| `season_rest_applied` | True once the one-time rest drive of the current seasonal pause has run. Cleared by `SeasonalPausePipe` when the season starts again. |
 
 **`CoverContext`** (per-cycle, not persisted):
 
@@ -193,21 +190,31 @@ covers. Only `(month, day)` is compared, so the window repeats every year, and a
 start date after the end date wraps across New Year (e.g. 01.11 to 28.02).
 
 Outside the window the coordinator keeps calculating — sensors stay live — while
-`SeasonalPausePipe` stops all cover movement. Each cover is driven to the configured
-rest position exactly once, deferred until the sun is above the horizon so a pause
-never raises a cover at night.
+`SeasonalPausePipe` stops all cover movement.
 
-`season_rest_applied` lives in runtime data and is therefore lost on reload. At setup,
-`_restore_season_rest_flags()` seeds it: a reload within the same Home Assistant run
-restores the flags stashed by `async_unload_entry()` (so enabling the pause from the
-options flow still performs the rest drive), while a fresh start during an ongoing
-pause marks the drive as done, so restarting Home Assistant never pulls a hand-moved
-cover back to the rest position.
+**The one-time rest drive.** On the first day of a pause each cover is driven once to
+the configured rest position. It is held back until the sun is above the horizon, and
+it respects manually closed slats, so it never moves a cover at night or over a closed
+blind. If it cannot run that day it is abandoned rather than left armed — a drive that
+fires weeks later, the moment a cover happens to become reachable, is a worse surprise
+than an unparked cover.
 
-**Key classes:**
+`SeasonRestStore` persists that per cover, keyed by the pause period and by a token
+covering the window and the rest position. This is why a restart mid-pause neither
+re-drives a cover the user has since moved by hand nor silently cancels a drive that
+never happened, why next year's pause drives again, and why correcting the rest
+position during a pause takes effect instead of being ignored.
 
-- `SmartVenetianBlindsConfigFlowHandler` (main flow)
-- `SmartVenetianBlindsOptionsFlow` (options)
+While paused, the pipe keeps `in_no_sun` in step with the real sun position. The pipes
+behind it never run during a pause, so without that the first cycle after the season
+resumes — just after midnight, in the dark — would look to `NoSunPipe` like a fresh
+no-sun period and fire its action.
+
+**Day values.** Boundaries are stored as month/day and offered as `MM-DD` option values
+with localized labels (`season/day_options.py`). Home Assistant has no month/day
+selector or entity; a date picker would show a year that carries no meaning, would not
+survive a round trip, and would make the device-page entities change state every New
+Year.
 
 ### Base Entity
 
@@ -224,7 +231,7 @@ Provides common functionality for all entities in the integration:
 
 ## Platform Organization
 
-Each platform (sensor, switch) follows this pattern:
+Each platform (binary_sensor, number, select, sensor, switch) follows this pattern:
 
 ```text
 <platform>/
@@ -277,7 +284,7 @@ See [DECISIONS.md](./DECISIONS.md) for architectural and design decisions made d
 1. Create directory: `custom_components/smart_venetian_blinds/<platform>/`
 2. Implement `__init__.py` with `async_setup_entry()`
 3. Create entity classes inheriting from platform base + `SmartVenetianBlindsEntity`
-4. Add platform to `PLATFORMS` in `const.py`
+4. Add platform to `PLATFORMS` in `__init__.py`
 
 ### Adding a New Service Action
 

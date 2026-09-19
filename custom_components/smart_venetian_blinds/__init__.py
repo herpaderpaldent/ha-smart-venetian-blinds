@@ -19,7 +19,6 @@ from homeassistant.const import Platform
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.event import async_track_time_change
 from homeassistant.loader import async_get_loaded_integration
-import homeassistant.util.dt as dt_util
 
 from .const import (
     CONF_COVER_ENTITY,
@@ -35,7 +34,7 @@ from .coordinator.state import GroupState
 from .cover_control import CoverController
 from .cover_control.context import CoverTrackingState
 from .data import SmartVenetianBlindsData
-from .season import SeasonWindow
+from .season import SeasonRestStore, SeasonWindow
 from .service_actions import async_setup_services
 from .sun import SunDataProvider, SunStateListener
 
@@ -47,54 +46,12 @@ if TYPE_CHECKING:
 PLATFORMS: list[Platform] = [
     Platform.BINARY_SENSOR,
     Platform.NUMBER,
+    Platform.SELECT,
     Platform.SENSOR,
     Platform.SWITCH,
 ]
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
-
-SEASON_REST_STORE_KEY = "season_rest_applied"
-"""hass.data key under which season rest flags survive a config entry reload."""
-
-
-def _season_rest_store(hass: HomeAssistant) -> dict[str, dict[str, bool]]:
-    """Return the per-entry store of season rest flags, creating it if needed."""
-    return hass.data.setdefault(DOMAIN, {}).setdefault(SEASON_REST_STORE_KEY, {})
-
-
-def _restore_season_rest_flags(hass: HomeAssistant, entry: SmartVenetianBlindsConfigEntry) -> None:
-    """
-    Seed each cover's ``season_rest_applied`` flag when the group starts up paused.
-
-    The flag lives in runtime data, so it is lost on every reload. Without seeding
-    it, each Home Assistant restart during a months-long pause would drive every
-    cover back to the rest position — overriding whatever the user set by hand.
-
-    A reload within the same Home Assistant run keeps the previous flags (stored by
-    ``async_unload_entry``), so enabling the seasonal pause from the options flow
-    still performs the one-time rest drive. After a real restart there are no stored
-    flags and the covers are left untouched.
-    """
-    season = SeasonWindow.from_options(entry.options)
-    if not season.is_paused(dt_util.now().date()):
-        return
-
-    previous = _season_rest_store(hass).get(entry.entry_id)
-    state = entry.runtime_data.state
-
-    for subentry in entry.subentries.values():
-        entity_id = subentry.data.get(CONF_COVER_ENTITY)
-        if not entity_id:
-            continue
-        cover_state = state.cover_states.setdefault(entity_id, CoverTrackingState())
-        cover_state.season_rest_applied = True if previous is None else previous.get(entity_id, False)
-
-    LOGGER.debug(
-        "Group '%s' starts up seasonally paused (season %s, reload=%s)",
-        entry.title,
-        season.describe(),
-        previous is not None,
-    )
 
 
 def _create_controller(hass: HomeAssistant, entry: SmartVenetianBlindsConfigEntry) -> CoverController:
@@ -106,6 +63,7 @@ def _create_controller(hass: HomeAssistant, entry: SmartVenetianBlindsConfigEntr
         settling_delay_sec=entry.options.get(CONF_POSITION_SETTLING_DELAY, DEFAULT_POSITION_SETTLING_DELAY),
         cover_states=state.cover_states,
         season=SeasonWindow.from_options(entry.options),
+        season_store=entry.runtime_data.season_store,
     )
 
 
@@ -135,6 +93,10 @@ async def async_setup_entry(
     # Initialize sun data provider
     sun_provider = SunDataProvider(hass)
 
+    # Load the persisted record of which covers already had their season rest drive
+    season_store = SeasonRestStore(hass, entry.entry_id)
+    await season_store.async_load()
+
     # Initialize coordinator
     coordinator = SmartVenetianBlindsDataUpdateCoordinator(
         hass=hass,
@@ -148,6 +110,7 @@ async def async_setup_entry(
         coordinator=coordinator,
         integration=async_get_loaded_integration(hass, entry.domain),
         state=GroupState(),
+        season_store=season_store,
     )
 
     # Perform initial calculation
@@ -178,8 +141,6 @@ async def async_setup_entry(
             entry.title,
             len(entry.subentries),
         )
-
-    _restore_season_rest_flags(hass, entry)
 
     # Create async callback for applying cover tilts
     async def apply_cover_tilts() -> None:
@@ -220,8 +181,9 @@ async def async_setup_entry(
         # Update coordinator data (this updates sensors)
         coordinator.trigger_update()
 
-        # Schedule async cover tilt application
-        hass.async_create_task(apply_cover_tilts())
+        # Schedule async cover tilt application. Tracked against the entry so an
+        # unload cancels a drive that is still waiting for a cover to settle.
+        entry.async_create_background_task(hass, apply_cover_tilts(), f"{DOMAIN}_apply_cover_tilts")
 
     # Set up sun state listener for event-driven updates
     tracked_entities = sun_provider.get_tracked_entities()
@@ -278,18 +240,17 @@ async def async_unload_entry(
     """
     Unload a config entry.
 
-    This is called when the integration is being removed or reloaded. The season
-    rest flags are stashed in hass.data so a reload (e.g. after an options change)
-    can tell itself apart from a fresh Home Assistant start.
+    This is called when the integration is being removed or reloaded.
     """
-    runtime_data = getattr(entry, "runtime_data", None)
-    if runtime_data is not None:
-        _season_rest_store(hass)[entry.entry_id] = {
-            entity_id: cover_state.season_rest_applied
-            for entity_id, cover_state in runtime_data.state.cover_states.items()
-        }
-
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+
+
+async def async_remove_entry(
+    hass: HomeAssistant,
+    entry: SmartVenetianBlindsConfigEntry,
+) -> None:
+    """Delete the group's persisted season record when it is removed."""
+    await SeasonRestStore(hass, entry.entry_id).async_remove()
 
 
 async def async_reload_entry(

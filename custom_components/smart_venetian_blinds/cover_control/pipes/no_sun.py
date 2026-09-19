@@ -29,6 +29,21 @@ from homeassistant.components.cover import ATTR_CURRENT_POSITION
 from homeassistant.const import ATTR_ENTITY_ID, SERVICE_SET_COVER_POSITION, SERVICE_SET_COVER_TILT_POSITION
 
 
+def is_no_sun(ctx: CoverContext) -> bool:
+    """
+    Return True if the sun is not hitting the facade for this cover.
+
+    Shared with SeasonalPausePipe, which keeps ``in_no_sun`` truthful while the
+    group is seasonally paused so NoSunPipe does not mistake the first cycle
+    after the season resumes for a fresh no-sun period.
+    """
+    if ctx.calculation is None or ctx.calculation.sun_is_behind_facade:
+        return True
+    return (
+        ctx.config.obstacle_elevation_deg > 0 and ctx.calculation.sun_elevation_deg <= ctx.config.obstacle_elevation_deg
+    )
+
+
 class NoSunPipe:
     """
     Manage no-sun detection, state transitions, and no-sun action dispatch.
@@ -50,7 +65,7 @@ class NoSunPipe:
 
     async def handle(self, ctx: CoverContext, call_next: Callable[[], Awaitable[bool]]) -> bool:
         """Handle pipe step."""
-        no_sun = self._is_no_sun(ctx)
+        no_sun = is_no_sun(ctx)
 
         if no_sun:
             return await self._handle_no_sun(ctx)
@@ -65,18 +80,6 @@ class NoSunPipe:
             ctx.first_sun_hit = True  # signals ExitDetectionPipe to skip this cycle
 
         return await call_next()
-
-    @staticmethod
-    def _is_no_sun(ctx: CoverContext) -> bool:
-        """Return True if the sun is not hitting the facade for this cover."""
-        if ctx.calculation is None or ctx.calculation.sun_is_behind_facade:
-            return True
-        if (
-            ctx.config.obstacle_elevation_deg > 0
-            and ctx.calculation.sun_elevation_deg <= ctx.config.obstacle_elevation_deg
-        ):
-            return True
-        return False
 
     async def _handle_no_sun(self, ctx: CoverContext) -> bool:
         """Apply no-sun action (once) and update state."""

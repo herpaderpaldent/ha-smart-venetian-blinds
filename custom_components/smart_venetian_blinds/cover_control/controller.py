@@ -51,7 +51,7 @@ from custom_components.smart_venetian_blinds.const import (
     DEFAULT_RESPECT_MANUAL_OPEN,
     LOGGER,
 )
-from custom_components.smart_venetian_blinds.cover_control.context import CoverContext, CoverTrackingState
+from custom_components.smart_venetian_blinds.cover_control.context import CoverContext, CoverPipe, CoverTrackingState
 from custom_components.smart_venetian_blinds.cover_control.pipes import (
     DrivingCheckPipe,
     EnabledPipe,
@@ -63,7 +63,7 @@ from custom_components.smart_venetian_blinds.cover_control.pipes import (
     SleepProtectionPipe,
     TiltPipe,
 )
-from custom_components.smart_venetian_blinds.season import SeasonWindow
+from custom_components.smart_venetian_blinds.season import SeasonRestStore, SeasonWindow
 
 if TYPE_CHECKING:
     from custom_components.smart_venetian_blinds.sun import SlatCalculationResult
@@ -138,20 +138,7 @@ class Pipeline:
     or passes control to the next pipe via call_next(). Pipes are called in order.
     """
 
-    def __init__(
-        self,
-        pipes: list[
-            EnabledPipe
-            | DrivingCheckPipe
-            | SeasonalPausePipe
-            | SleepProtectionPipe
-            | ExitPausedCheckPipe
-            | NoSunPipe
-            | ExitDetectionPipe
-            | PositionDrivePipe
-            | TiltPipe
-        ],
-    ) -> None:
+    def __init__(self, pipes: list[CoverPipe]) -> None:
         """Initialize with an ordered list of pipes."""
         self._pipes = pipes
 
@@ -188,6 +175,7 @@ class CoverController:
         settling_delay_sec: int = 5,
         cover_states: dict[str, CoverTrackingState] | None = None,
         season: SeasonWindow | None = None,
+        season_store: SeasonRestStore | None = None,
     ) -> None:
         """Initialize the cover controller."""
         self._hass = hass
@@ -195,6 +183,7 @@ class CoverController:
         self._settling_delay_sec = settling_delay_sec
         self._cover_states = cover_states if cover_states is not None else {}
         self._season = season if season is not None else SeasonWindow()
+        self._season_store = season_store
 
     def _get_or_create_state(self, entity_id: str) -> CoverTrackingState:
         """Get or create the tracking state for a cover."""
@@ -204,12 +193,17 @@ class CoverController:
 
     def _build_pipeline(self) -> Pipeline:
         """Build the cover control pipeline."""
-        return Pipeline(
+        pipes: list[CoverPipe] = [
+            EnabledPipe(),
+            DrivingCheckPipe(),
+        ]
+        # SeasonalPausePipe runs before SleepProtectionPipe so it still sees a cycle
+        # when the slats are manually closed; it applies that guard itself.
+        if self._season_store is not None:
+            pipes.append(SeasonalPausePipe(self._season, self._season_store, self._position_timeout_sec))
+        pipes.extend(
             [
-                EnabledPipe(),
-                DrivingCheckPipe(),
                 SleepProtectionPipe(),
-                SeasonalPausePipe(self._season, self._position_timeout_sec),
                 ExitPausedCheckPipe(),
                 NoSunPipe(self._position_timeout_sec),
                 ExitDetectionPipe(),
@@ -217,6 +211,7 @@ class CoverController:
                 TiltPipe(),
             ]
         )
+        return Pipeline(pipes)
 
     async def apply_calculation(
         self,

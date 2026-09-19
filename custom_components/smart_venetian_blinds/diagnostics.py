@@ -93,21 +93,21 @@ async def async_get_config_entry_diagnostics(
     # Group state
     state_info = {
         "auto_control_enabled": state.auto_control_enabled,
-        "season_rest_applied": {
-            entity_id: cover_state.season_rest_applied for entity_id, cover_state in state.cover_states.items()
-        },
         "last_applied_angle": state.last_applied_angle,
         "last_applied_time": state.last_applied_time.isoformat() if state.last_applied_time else None,
     }
 
     # Seasonal pause information
     season = SeasonWindow.from_options(entry.options)
+    today = dt_util.now().date()
     season_info = {
         "enabled": season.enabled,
-        "window": season.describe(),
+        "window": str(season),
         "wraps_year_end": season.wraps_year_end,
         "rest_position": season.rest_position,
-        "currently_paused": season.is_paused(dt_util.now().date()),
+        "currently_paused": season.is_paused(today),
+        "pause_period_start": (start.isoformat() if (start := season.pause_period_start(today)) is not None else None),
+        "rest_records": entry.runtime_data.season_store.as_diagnostics(),
     }
 
     # Group configuration

@@ -17,87 +17,69 @@ from custom_components.smart_venetian_blinds.const import (
     CONF_MIN_UPDATE_INTERVAL,
     CONF_POSITION_SETTLING_DELAY,
     CONF_POSITION_TIMEOUT,
-    CONF_SEASON_END_DAY,
-    CONF_SEASON_END_MONTH,
+    CONF_SEASON_END,
     CONF_SEASON_PAUSE_ENABLED,
     CONF_SEASON_REST_POSITION,
-    CONF_SEASON_START_DAY,
-    CONF_SEASON_START_MONTH,
+    CONF_SEASON_START,
     DEFAULT_CHANGE_THRESHOLD,
     DEFAULT_MIN_UPDATE_INTERVAL,
     DEFAULT_POSITION_SETTLING_DELAY,
     DEFAULT_POSITION_TIMEOUT,
-    DEFAULT_SEASON_END_DAY,
-    DEFAULT_SEASON_END_MONTH,
-    DEFAULT_SEASON_PAUSE_ENABLED,
-    DEFAULT_SEASON_REST_POSITION,
-    DEFAULT_SEASON_START_DAY,
-    DEFAULT_SEASON_START_MONTH,
 )
+from custom_components.smart_venetian_blinds.season import SeasonWindow, day_choices
 from homeassistant.helpers import selector
 
-_MONTH_VALUES = [str(month) for month in range(1, 13)]
 
+def _day_selector(language: str | None) -> selector.SelectSelector:
+    """
+    Return a dropdown listing every possible season boundary.
 
-def _month_selector() -> selector.SelectSelector:
-    """Return a dropdown selector for a calendar month."""
+    Home Assistant has no month/day selector, and a date picker would show a year
+    that carries no meaning and does not survive a round trip. A select stores a
+    language-independent ``MM-DD`` value while showing a localized label.
+    """
     return selector.SelectSelector(
         selector.SelectSelectorConfig(
-            options=_MONTH_VALUES,
+            options=[selector.SelectOptionDict(value=value, label=label) for value, label in day_choices(language)],
             mode=selector.SelectSelectorMode.DROPDOWN,
-            translation_key="month",
+            custom_value=False,
         ),
     )
 
 
-def _day_selector() -> selector.NumberSelector:
-    """Return a box selector for a day of month."""
-    return selector.NumberSelector(
-        selector.NumberSelectorConfig(
-            min=1,
-            max=31,
-            step=1,
-            mode=selector.NumberSelectorMode.BOX,
-        ),
-    )
-
-
-def get_season_schema(defaults: Mapping[str, Any] | None = None) -> vol.Schema:
+def get_season_schema(
+    defaults: Mapping[str, Any] | None = None,
+    language: str | None = None,
+) -> vol.Schema:
     """
     Get schema for the seasonal pause options.
 
     Args:
         defaults: Optional dictionary of current option values.
+        language: Home Assistant's configured language, used for the day labels.
 
     Returns:
         Voluptuous schema for seasonal pause configuration.
     """
     defaults = defaults or {}
+    season = SeasonWindow.from_options(defaults)
     return vol.Schema(
         {
             vol.Required(
                 CONF_SEASON_PAUSE_ENABLED,
-                default=defaults.get(CONF_SEASON_PAUSE_ENABLED, DEFAULT_SEASON_PAUSE_ENABLED),
+                default=season.enabled,
             ): selector.BooleanSelector(),
             vol.Required(
-                CONF_SEASON_START_MONTH,
-                default=str(defaults.get(CONF_SEASON_START_MONTH, DEFAULT_SEASON_START_MONTH)),
-            ): _month_selector(),
+                CONF_SEASON_START,
+                default=season.start_value,
+            ): _day_selector(language),
             vol.Required(
-                CONF_SEASON_START_DAY,
-                default=defaults.get(CONF_SEASON_START_DAY, DEFAULT_SEASON_START_DAY),
-            ): _day_selector(),
-            vol.Required(
-                CONF_SEASON_END_MONTH,
-                default=str(defaults.get(CONF_SEASON_END_MONTH, DEFAULT_SEASON_END_MONTH)),
-            ): _month_selector(),
-            vol.Required(
-                CONF_SEASON_END_DAY,
-                default=defaults.get(CONF_SEASON_END_DAY, DEFAULT_SEASON_END_DAY),
-            ): _day_selector(),
+                CONF_SEASON_END,
+                default=season.end_value,
+            ): _day_selector(language),
             vol.Required(
                 CONF_SEASON_REST_POSITION,
-                default=defaults.get(CONF_SEASON_REST_POSITION, DEFAULT_SEASON_REST_POSITION),
+                default=season.rest_position,
             ): selector.NumberSelector(
                 selector.NumberSelectorConfig(
                     min=0,

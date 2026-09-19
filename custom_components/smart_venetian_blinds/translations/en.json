@@ -159,12 +159,12 @@
         "title": "Configure Options",
         "description": "Choose which settings to adjust.",
         "menu_options": {
-          "timing": "Update throttling",
-          "season": "Seasonal pause"
+          "timing": "Timing & throttling",
+          "season": "Season"
         }
       },
       "timing": {
-        "title": "Update Throttling",
+        "title": "Timing & Throttling",
         "description": "Adjust update throttling settings.",
         "data": {
           "change_threshold_deg": "Change threshold",
@@ -180,34 +180,30 @@
         }
       },
       "season": {
-        "title": "Seasonal Pause",
-        "description": "Restrict this window group to one part of the year. Outside the season the group keeps calculating sun position, but no longer moves any cover. On the first sunlit cycle of the pause each cover is driven once to the rest position and then left alone.",
+        "title": "Season",
+        "description": "Restrict this window group to one part of the year. Only day and month are stored, so the season repeats every year.\n\n**Sun tracking runs {active_window}. Covers rest {paused_window}.**\n\nDuring the pause the group keeps calculating sun position but no longer moves any cover. On the first sunlit cycle of the pause each cover is driven once to the rest position and then left alone.",
         "data": {
-          "season_pause_enabled": "Seasonal pause active",
-          "season_start_month": "Season start month",
-          "season_start_day": "Season start day",
-          "season_end_month": "Season end month",
-          "season_end_day": "Season end day",
+          "season_pause_enabled": "Limit to a season",
+          "season_start": "Season starts",
+          "season_end": "Season ends",
           "season_rest_position_percent": "Rest position"
         },
         "data_description": {
           "season_pause_enabled": "When off, the group controls covers all year round.",
-          "season_start_month": "Month in which sun tracking resumes.",
-          "season_start_day": "Day of month on which sun tracking resumes (inclusive).",
-          "season_end_month": "Month in which sun tracking stops.",
-          "season_end_day": "Day of month on which sun tracking stops (inclusive, last active day).",
-          "season_rest_position_percent": "Position each cover is driven to once when the pause begins (0%=closed, 100%=open). A season that ends before it starts, e.g. 01.11 to 28.02, wraps across New Year."
+          "season_start": "First day of the year on which sun tracking runs.",
+          "season_end": "Last day on which sun tracking runs. An end before the start, e.g. 1 November to 28 February, wraps across New Year.",
+          "season_rest_position_percent": "Position each cover is driven to once when the pause begins (0%=closed, 100%=open). A cover whose slats are manually closed is left alone."
         }
       }
     },
     "error": {
-      "invalid_season_date": "This day does not exist in the selected month."
+      "invalid_season_date": "Please pick a valid day for the season boundary."
     }
   },
   "entity": {
     "binary_sensor": {
       "seasonal_pause": {
-        "name": "Seasonal Pause"
+        "name": "Paused for Season"
       }
     },
     "number": {
@@ -235,6 +231,17 @@
       },
       "exit_paused": {
         "name": "Daily Pause"
+      },
+      "season_pause": {
+        "name": "Seasonal Schedule"
+      }
+    },
+    "select": {
+      "season_start": {
+        "name": "Season Starts"
+      },
+      "season_end": {
+        "name": "Season Ends"
       }
     }
   },
@@ -242,24 +249,6 @@
     "apply_now": {
       "name": "Apply Now",
       "description": "Force immediate recalculation and application of slat angles to all covers, ignoring throttling rules."
-    }
-  },
-  "selector": {
-    "month": {
-      "options": {
-        "1": "January",
-        "2": "February",
-        "3": "March",
-        "4": "April",
-        "5": "May",
-        "6": "June",
-        "7": "July",
-        "8": "August",
-        "9": "September",
-        "10": "October",
-        "11": "November",
-        "12": "December"
-      }
     }
   }
 }

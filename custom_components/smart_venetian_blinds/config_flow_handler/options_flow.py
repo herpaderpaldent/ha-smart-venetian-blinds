@@ -14,10 +14,8 @@ from __future__ import annotations
 from typing import Any
 
 from custom_components.smart_venetian_blinds.config_flow_handler.schemas import get_options_schema, get_season_schema
-from custom_components.smart_venetian_blinds.config_flow_handler.validators import (
-    normalize_season_input,
-    validate_season_input,
-)
+from custom_components.smart_venetian_blinds.config_flow_handler.validators import normalize_season_input
+from custom_components.smart_venetian_blinds.season import SeasonWindow
 from homeassistant import config_entries
 
 
@@ -90,18 +88,24 @@ class SmartVenetianBlindsOptionsFlow(config_entries.OptionsFlow):
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            normalized = normalize_season_input(user_input)
-            errors = validate_season_input(normalized)
+            normalized, errors = normalize_season_input(user_input)
             if not errors:
                 return self._save(normalized)
             defaults = {**self.config_entry.options, **normalized}
         else:
             defaults = dict(self.config_entry.options)
 
+        language = self.hass.config.language
+        season = SeasonWindow.from_options(defaults)
+
         return self.async_show_form(
             step_id="season",
-            data_schema=get_season_schema(defaults),
+            data_schema=get_season_schema(defaults, language),
             errors=errors,
+            description_placeholders={
+                "active_window": season.format_window(language),
+                "paused_window": season.format_pause(language),
+            },
         )
 
     def _save(self, user_input: dict[str, Any]) -> config_entries.ConfigFlowResult:

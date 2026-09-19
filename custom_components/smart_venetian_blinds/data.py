@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from homeassistant.loader import Integration
 
     from .coordinator import SmartVenetianBlindsDataUpdateCoordinator
+    from .season import SeasonRestStore
     from .sun import SunDataProvider
 
 
@@ -30,12 +31,14 @@ class SmartVenetianBlindsData:
     - Shared sun data provider
     - Coordinator for managing updates
     - Group state for calculation results
+    - Persisted record of the one-time seasonal rest drive
     """
 
     sun_provider: SunDataProvider
     coordinator: SmartVenetianBlindsDataUpdateCoordinator
     integration: Integration
     state: GroupState
+    season_store: SeasonRestStore
     apply_cover_tilts: Callable[[], Coroutine[Any, Any, None]] | None = field(default=None, repr=False)
 
     @property

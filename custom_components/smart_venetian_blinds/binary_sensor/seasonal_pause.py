@@ -11,16 +11,17 @@ from typing import Any
 
 from custom_components.smart_venetian_blinds.const import ATTRIBUTION
 from custom_components.smart_venetian_blinds.coordinator import SmartVenetianBlindsDataUpdateCoordinator
-from custom_components.smart_venetian_blinds.entity_utils import create_window_group_device_info
+from custom_components.smart_venetian_blinds.entity_utils import build_entity_id, create_window_group_device_info
 from custom_components.smart_venetian_blinds.season import SeasonWindow
-from custom_components.smart_venetian_blinds.utils.string_helpers import slugify_name
 from homeassistant.components.binary_sensor import BinarySensorEntity, BinarySensorEntityDescription
+from homeassistant.const import EntityCategory
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 import homeassistant.util.dt as dt_util
 
 SEASONAL_PAUSE_DESCRIPTION = BinarySensorEntityDescription(
     key="seasonal_pause",
     translation_key="seasonal_pause",
+    entity_category=EntityCategory.DIAGNOSTIC,
     icon="mdi:calendar-remove",
 )
 
@@ -44,7 +45,9 @@ class SeasonalPauseBinarySensor(CoordinatorEntity[SmartVenetianBlindsDataUpdateC
         """Initialize the binary sensor."""
         super().__init__(coordinator)
         self._attr_unique_id = f"{coordinator.config_entry.entry_id}_seasonal_pause"
-        self.entity_id = f"binary_sensor.{slugify_name(coordinator.config_entry.title)}_seasonal_pause"
+        self.entity_id = build_entity_id(
+            "binary_sensor", coordinator.config_entry.title, SEASONAL_PAUSE_DESCRIPTION.key
+        )
         self._attr_device_info = create_window_group_device_info(coordinator.config_entry)
 
     @property
@@ -63,8 +66,8 @@ class SeasonalPauseBinarySensor(CoordinatorEntity[SmartVenetianBlindsDataUpdateC
         season = self._season
         return {
             "season_pause_enabled": season.enabled,
-            "season_start": f"{season.start_day:02d}.{season.start_month:02d}",
-            "season_end": f"{season.end_day:02d}.{season.end_month:02d}",
+            "season_start": season.start_value,
+            "season_end": season.end_value,
             "rest_position": season.rest_position,
         }
 

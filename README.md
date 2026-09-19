@@ -17,7 +17,7 @@ A Home Assistant custom integration for automatic sun-position-driven venetian b
 - **Multiple covers per window group** sharing the same facade orientation
 - **Manual override detection** - won't disturb manually closed blinds
 - **Daily Pause switch** per cover - manually pause and retract a cover, resume with one tap
-- **Seasonal pause** per window group - restrict tracking to part of the year, e.g. 15 March to 15 October
+- **Seasonal schedule** per window group - restrict tracking to part of the year, e.g. 15 March to 15 October, with a one-time park at the rest position
 - **Reflection protection** - prevents glare from reflected light (balconies/terraces)
 - **Minimum tilt floor** - set a lower bound so covers never go below a configured openness
 - **Throttling controls** to reduce motor wear, including a configurable settling delay after position drive
@@ -132,6 +132,9 @@ For each **window group**:
 | `sensor.<group>_slat_tilt` | Calculated optimal tilt (percent) |
 | `sensor.<group>_profile_angle` | Current profile angle — diagnostic, disabled by default |
 | `binary_sensor.<group>_seasonal_pause` | ON while the group is outside its configured season |
+| `switch.<group>_season_pause` | Enable the seasonal schedule |
+| `select.<group>_season_start` | First day of the year sun tracking runs |
+| `select.<group>_season_end` | Last day sun tracking runs |
 | `number.<group>_slat_width` | Slat width setting (mm) |
 | `number.<group>_slat_spacing` | Slat spacing setting (mm) |
 

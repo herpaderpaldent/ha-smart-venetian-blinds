@@ -159,12 +159,12 @@
         "title": "Optionen konfigurieren",
         "description": "Wähle aus, welche Einstellungen du anpassen möchtest.",
         "menu_options": {
-          "timing": "Update-Drosselung",
-          "season": "Saisonale Pause"
+          "timing": "Timing & Drosselung",
+          "season": "Saison"
         }
       },
       "timing": {
-        "title": "Update-Drosselung",
+        "title": "Timing & Drosselung",
         "description": "Einstellungen zur Update-Drosselung anpassen.",
         "data": {
           "change_threshold_deg": "Änderungsschwellenwert",
@@ -180,34 +180,30 @@
         }
       },
       "season": {
-        "title": "Saisonale Pause",
-        "description": "Beschränkt diese Fenstergruppe auf einen Teil des Jahres. Ausserhalb der Saison rechnet die Gruppe weiterhin die Sonnenposition, fährt aber keine Storen mehr. Beim ersten Zyklus mit Sonne über dem Horizont wird jede Store einmalig in die Ruheposition gefahren und danach in Ruhe gelassen.",
+        "title": "Saison",
+        "description": "Beschränkt diese Fenstergruppe auf einen Teil des Jahres. Gespeichert werden nur Tag und Monat, die Saison wiederholt sich also jährlich.\n\n**Die Nachführung läuft {active_window}. Die Storen ruhen {paused_window}.**\n\nWährend der Pause rechnet die Gruppe die Sonnenposition weiter, fährt aber keine Store mehr. Beim ersten Zyklus mit Sonne über dem Horizont fährt jede Store einmalig in die Ruheposition und wird danach in Ruhe gelassen.",
         "data": {
-          "season_pause_enabled": "Saisonale Pause aktiv",
-          "season_start_month": "Monat Saisonbeginn",
-          "season_start_day": "Tag Saisonbeginn",
-          "season_end_month": "Monat Saisonende",
-          "season_end_day": "Tag Saisonende",
+          "season_pause_enabled": "Auf eine Saison beschränken",
+          "season_start": "Saison beginnt",
+          "season_end": "Saison endet",
           "season_rest_position_percent": "Ruheposition"
         },
         "data_description": {
           "season_pause_enabled": "Wenn deaktiviert, steuert die Gruppe das ganze Jahr über.",
-          "season_start_month": "Monat, in dem die Sonnennachführung wieder startet.",
-          "season_start_day": "Tag, an dem die Sonnennachführung wieder startet (inklusive).",
-          "season_end_month": "Monat, in dem die Sonnennachführung stoppt.",
-          "season_end_day": "Tag, an dem die Sonnennachführung stoppt (inklusive, letzter aktiver Tag).",
-          "season_rest_position_percent": "Position, in die jede Store beim Beginn der Pause einmalig fährt (0%=geschlossen, 100%=offen). Eine Saison, die vor ihrem Start endet, z.B. 01.11 bis 28.02, läuft über den Jahreswechsel."
+          "season_start": "Erster Tag im Jahr, an dem die Nachführung läuft.",
+          "season_end": "Letzter Tag, an dem die Nachführung läuft. Ein Ende vor dem Start, z.B. 1. November bis 28. Februar, läuft über den Jahreswechsel.",
+          "season_rest_position_percent": "Position, in die jede Store beim Beginn der Pause einmalig fährt (0%=geschlossen, 100%=offen). Eine Store mit manuell geschlossenen Lamellen bleibt unangetastet."
         }
       }
     },
     "error": {
-      "invalid_season_date": "Diesen Tag gibt es im gewählten Monat nicht."
+      "invalid_season_date": "Bitte einen gültigen Tag für die Saisongrenze wählen."
     }
   },
   "entity": {
     "binary_sensor": {
       "seasonal_pause": {
-        "name": "Saisonale Pause"
+        "name": "Saisonpause"
       }
     },
     "number": {
@@ -235,6 +231,17 @@
       },
       "exit_paused": {
         "name": "Tages-Pause"
+      },
+      "season_pause": {
+        "name": "Saisonplan"
+      }
+    },
+    "select": {
+      "season_start": {
+        "name": "Saison beginnt"
+      },
+      "season_end": {
+        "name": "Saison endet"
       }
     }
   },
@@ -242,24 +249,6 @@
     "apply_now": {
       "name": "Jetzt anwenden",
       "description": "Sofortige Neuberechnung und Anwendung der Lamellenwinkel auf alle Abdeckungen erzwingen, unter Ignorierung der Drosselungsregeln."
-    }
-  },
-  "selector": {
-    "month": {
-      "options": {
-        "1": "Januar",
-        "2": "Februar",
-        "3": "März",
-        "4": "April",
-        "5": "Mai",
-        "6": "Juni",
-        "7": "Juli",
-        "8": "August",
-        "9": "September",
-        "10": "Oktober",
-        "11": "November",
-        "12": "Dezember"
-      }
     }
   }
 }

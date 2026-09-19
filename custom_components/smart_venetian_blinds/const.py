@@ -36,6 +36,11 @@ CONF_SEASON_END_MONTH = "season_end_month"
 CONF_SEASON_END_DAY = "season_end_day"
 CONF_SEASON_REST_POSITION = "season_rest_position_percent"
 
+# Form-only keys: the options form shows one date picker per season boundary,
+# which is normalized into the month/day keys above before being stored.
+CONF_SEASON_START = "season_start"
+CONF_SEASON_END = "season_end"
+
 # === COVER SUBENTRY KEYS (subentry.data) ===
 CONF_COVER_ENTITY = "cover_entity_id"
 CONF_COVER_NAME = "name"
