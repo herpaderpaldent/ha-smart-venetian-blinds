@@ -13,22 +13,17 @@ would change state on its own every New Year.
 from __future__ import annotations
 
 from custom_components.smart_venetian_blinds.const import (
-    ATTRIBUTION,
     CONF_SEASON_END_DAY,
     CONF_SEASON_END_MONTH,
     CONF_SEASON_START_DAY,
     CONF_SEASON_START_MONTH,
 )
 from custom_components.smart_venetian_blinds.coordinator import SmartVenetianBlindsDataUpdateCoordinator
-from custom_components.smart_venetian_blinds.entity_utils import (
-    async_merge_entry_options,
-    build_entity_id,
-    create_window_group_device_info,
-)
+from custom_components.smart_venetian_blinds.entity import SmartVenetianBlindsEntity
+from custom_components.smart_venetian_blinds.entity_utils import async_merge_entry_options
 from custom_components.smart_venetian_blinds.season import SeasonWindow, day_choices, format_day, parse_day_value
 from homeassistant.components.select import SelectEntity, SelectEntityDescription
 from homeassistant.const import EntityCategory
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 SEASON_START_DESCRIPTION = SelectEntityDescription(
     key="season_start",
@@ -45,7 +40,7 @@ SEASON_END_DESCRIPTION = SelectEntityDescription(
 )
 
 
-class SeasonBoundarySelect(CoordinatorEntity[SmartVenetianBlindsDataUpdateCoordinator], SelectEntity):
+class SeasonBoundarySelect(SmartVenetianBlindsEntity, SelectEntity):
     """
     Base class for the two season boundary selects.
 
@@ -53,9 +48,6 @@ class SeasonBoundarySelect(CoordinatorEntity[SmartVenetianBlindsDataUpdateCoordi
     configured language. Only month and day are stored, so the season repeats
     every year without reconfiguration.
     """
-
-    _attr_attribution = ATTRIBUTION
-    _attr_has_entity_name = True
 
     _month_key: str
     _day_key: str
@@ -66,11 +58,7 @@ class SeasonBoundarySelect(CoordinatorEntity[SmartVenetianBlindsDataUpdateCoordi
         description: SelectEntityDescription,
     ) -> None:
         """Initialize the select entity."""
-        super().__init__(coordinator)
-        self.entity_description = description
-        self._attr_unique_id = f"{coordinator.config_entry.entry_id}_{description.key}"
-        self.entity_id = build_entity_id("select", coordinator.config_entry.title, description.key)
-        self._attr_device_info = create_window_group_device_info(coordinator.config_entry)
+        super().__init__(coordinator, description, platform="select")
 
     @property
     def _language(self) -> str | None:

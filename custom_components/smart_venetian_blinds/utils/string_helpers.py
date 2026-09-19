@@ -5,20 +5,6 @@ from __future__ import annotations
 import re
 
 
-def slugify_name(name: str) -> str:
-    """
-    Convert a name to a slug.
-
-    Example:
-        >>> slugify_name("My Device Name")
-        'my_device_name'
-    """
-    # Convert to lowercase and replace spaces/special chars with underscores
-    slug = re.sub(r"[^\w\s-]", "", name.lower())
-    slug = re.sub(r"[-\s]+", "_", slug)
-    return slug.strip("_")
-
-
 def truncate_string(text: str, max_length: int = 255, suffix: str = "...") -> str:
     """
     Truncate a string to a maximum length.

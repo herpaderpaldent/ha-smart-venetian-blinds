@@ -8,12 +8,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from custom_components.smart_venetian_blinds.const import ATTRIBUTION
 from custom_components.smart_venetian_blinds.coordinator import SmartVenetianBlindsDataUpdateCoordinator
-from custom_components.smart_venetian_blinds.entity_utils import create_window_group_device_info
-from custom_components.smart_venetian_blinds.utils.string_helpers import slugify_name
+from custom_components.smart_venetian_blinds.entity import SmartVenetianBlindsEntity
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 AUTO_CONTROL_DESCRIPTION = SwitchEntityDescription(
     key="auto_control",
@@ -22,7 +19,7 @@ AUTO_CONTROL_DESCRIPTION = SwitchEntityDescription(
 )
 
 
-class AutoControlSwitch(CoordinatorEntity[SmartVenetianBlindsDataUpdateCoordinator], SwitchEntity):
+class AutoControlSwitch(SmartVenetianBlindsEntity, SwitchEntity):
     """
     Switch to enable/disable automatic blind control.
 
@@ -30,19 +27,12 @@ class AutoControlSwitch(CoordinatorEntity[SmartVenetianBlindsDataUpdateCoordinat
     based on sun position changes.
     """
 
-    _attr_attribution = ATTRIBUTION
-    _attr_has_entity_name = True
-    entity_description = AUTO_CONTROL_DESCRIPTION
-
     def __init__(
         self,
         coordinator: SmartVenetianBlindsDataUpdateCoordinator,
     ) -> None:
         """Initialize the switch."""
-        super().__init__(coordinator)
-        self._attr_unique_id = f"{coordinator.config_entry.entry_id}_auto_control"
-        self.entity_id = f"switch.{slugify_name(coordinator.config_entry.title)}_auto_control"
-        self._attr_device_info = create_window_group_device_info(coordinator.config_entry)
+        super().__init__(coordinator, AUTO_CONTROL_DESCRIPTION, platform="switch")
 
     @property
     def is_on(self) -> bool:

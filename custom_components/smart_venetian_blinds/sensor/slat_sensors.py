@@ -9,13 +9,10 @@ Provides sensors for:
 
 from __future__ import annotations
 
-from custom_components.smart_venetian_blinds.const import ATTRIBUTION
 from custom_components.smart_venetian_blinds.coordinator import SmartVenetianBlindsDataUpdateCoordinator
-from custom_components.smart_venetian_blinds.entity_utils import create_window_group_device_info
-from custom_components.smart_venetian_blinds.utils.string_helpers import slugify_name
+from custom_components.smart_venetian_blinds.entity import SmartVenetianBlindsEntity
 from homeassistant.components.sensor import SensorEntity, SensorEntityDescription, SensorStateClass
 from homeassistant.const import DEGREE, PERCENTAGE
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 SLAT_ANGLE_DESCRIPTION = SensorEntityDescription(
     key="slat_angle",
@@ -43,22 +40,15 @@ PROFILE_ANGLE_DESCRIPTION = SensorEntityDescription(
 )
 
 
-class SlatAngleSensor(CoordinatorEntity[SmartVenetianBlindsDataUpdateCoordinator], SensorEntity):
+class SlatAngleSensor(SmartVenetianBlindsEntity, SensorEntity):
     """Sensor for calculated slat angle."""
-
-    _attr_attribution = ATTRIBUTION
-    _attr_has_entity_name = True
-    entity_description = SLAT_ANGLE_DESCRIPTION
 
     def __init__(
         self,
         coordinator: SmartVenetianBlindsDataUpdateCoordinator,
     ) -> None:
         """Initialize the sensor."""
-        super().__init__(coordinator)
-        self._attr_unique_id = f"{coordinator.config_entry.entry_id}_slat_angle"
-        self.entity_id = f"sensor.{slugify_name(coordinator.config_entry.title)}_slat_angle"
-        self._attr_device_info = create_window_group_device_info(coordinator.config_entry)
+        super().__init__(coordinator, SLAT_ANGLE_DESCRIPTION, platform="sensor")
 
     @property
     def native_value(self) -> float | None:
@@ -68,22 +58,15 @@ class SlatAngleSensor(CoordinatorEntity[SmartVenetianBlindsDataUpdateCoordinator
         return self.coordinator.data.slat_angle_deg
 
 
-class SlatTiltSensor(CoordinatorEntity[SmartVenetianBlindsDataUpdateCoordinator], SensorEntity):
+class SlatTiltSensor(SmartVenetianBlindsEntity, SensorEntity):
     """Sensor for calculated slat tilt percent."""
-
-    _attr_attribution = ATTRIBUTION
-    _attr_has_entity_name = True
-    entity_description = SLAT_TILT_DESCRIPTION
 
     def __init__(
         self,
         coordinator: SmartVenetianBlindsDataUpdateCoordinator,
     ) -> None:
         """Initialize the sensor."""
-        super().__init__(coordinator)
-        self._attr_unique_id = f"{coordinator.config_entry.entry_id}_slat_tilt"
-        self.entity_id = f"sensor.{slugify_name(coordinator.config_entry.title)}_slat_tilt"
-        self._attr_device_info = create_window_group_device_info(coordinator.config_entry)
+        super().__init__(coordinator, SLAT_TILT_DESCRIPTION, platform="sensor")
 
     @property
     def native_value(self) -> float | None:
@@ -93,22 +76,15 @@ class SlatTiltSensor(CoordinatorEntity[SmartVenetianBlindsDataUpdateCoordinator]
         return self.coordinator.data.slat_tilt_percent
 
 
-class ProfileAngleSensor(CoordinatorEntity[SmartVenetianBlindsDataUpdateCoordinator], SensorEntity):
+class ProfileAngleSensor(SmartVenetianBlindsEntity, SensorEntity):
     """Sensor for profile angle (diagnostic)."""
-
-    _attr_attribution = ATTRIBUTION
-    _attr_has_entity_name = True
-    entity_description = PROFILE_ANGLE_DESCRIPTION
 
     def __init__(
         self,
         coordinator: SmartVenetianBlindsDataUpdateCoordinator,
     ) -> None:
         """Initialize the sensor."""
-        super().__init__(coordinator)
-        self._attr_unique_id = f"{coordinator.config_entry.entry_id}_profile_angle"
-        self.entity_id = f"sensor.{slugify_name(coordinator.config_entry.title)}_profile_angle"
-        self._attr_device_info = create_window_group_device_info(coordinator.config_entry)
+        super().__init__(coordinator, PROFILE_ANGLE_DESCRIPTION, platform="sensor")
 
     @property
     def native_value(self) -> float | None:

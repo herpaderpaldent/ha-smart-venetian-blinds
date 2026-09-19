@@ -13,8 +13,7 @@ from typing import TYPE_CHECKING, Any
 from custom_components.smart_venetian_blinds.const import ATTRIBUTION, CONF_COVER_ENTITY, CONF_COVER_NAME, LOGGER
 from custom_components.smart_venetian_blinds.coordinator import SmartVenetianBlindsDataUpdateCoordinator
 from custom_components.smart_venetian_blinds.cover_control.context import CoverTrackingState
-from custom_components.smart_venetian_blinds.entity_utils import create_window_group_device_info
-from custom_components.smart_venetian_blinds.utils.string_helpers import slugify_name
+from custom_components.smart_venetian_blinds.entity_utils import build_entity_id, create_window_group_device_info
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
 from homeassistant.const import ATTR_ENTITY_ID, SERVICE_SET_COVER_POSITION
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -59,9 +58,9 @@ class ExitModeSwitch(CoordinatorEntity[SmartVenetianBlindsDataUpdateCoordinator]
         self._subentry = subentry
         cover_name: str = subentry.data.get(CONF_COVER_NAME, self._cover_entity_id)
         entry = coordinator.config_entry
-        self._attr_unique_id = f"{entry.entry_id}_{subentry.subentry_id}_exit_paused"
+        self._attr_unique_id = f"{entry.entry_id}_{subentry.subentry_id}_{EXIT_MODE_DESCRIPTION.key}"
         self._attr_name = cover_name
-        self.entity_id = f"switch.{slugify_name(cover_name)}_exit_paused"
+        self.entity_id = build_entity_id("switch", cover_name, EXIT_MODE_DESCRIPTION.key)
         self._attr_device_info = create_window_group_device_info(entry)
 
     @property

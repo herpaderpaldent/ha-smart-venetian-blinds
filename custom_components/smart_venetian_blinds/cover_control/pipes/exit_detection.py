@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from custom_components.smart_venetian_blinds.const import LOGGER
-from homeassistant.components.cover import ATTR_CURRENT_POSITION
+from custom_components.smart_venetian_blinds.cover_control.position import read_position
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
@@ -50,17 +50,8 @@ class ExitDetectionPipe:
             )
             return await call_next()
 
-        state = ctx.hass.states.get(ctx.config.entity_id)
-        if state is None:
-            return await call_next()
-
-        raw_position = state.attributes.get(ATTR_CURRENT_POSITION)
-        if raw_position is None:
-            return await call_next()
-
-        try:
-            current_position = int(raw_position)
-        except (ValueError, TypeError):
+        current_position = read_position(ctx.hass, ctx.config.entity_id)
+        if current_position is None:
             return await call_next()
 
         if current_position >= ctx.config.manual_open_threshold:

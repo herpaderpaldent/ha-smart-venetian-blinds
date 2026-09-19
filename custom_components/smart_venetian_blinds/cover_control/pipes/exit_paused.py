@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from custom_components.smart_venetian_blinds.const import LOGGER
-from homeassistant.components.cover import ATTR_CURRENT_POSITION
+from custom_components.smart_venetian_blinds.cover_control.position import read_position
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
@@ -39,23 +39,16 @@ class ExitPausedCheckPipe:
             return await call_next()
 
         # Check whether the user has lowered the cover back below the threshold.
-        state = ctx.hass.states.get(ctx.config.entity_id)
-        if state is not None:
-            raw = state.attributes.get(ATTR_CURRENT_POSITION)
-            if raw is not None:
-                try:
-                    current_position = int(raw)
-                    if current_position < ctx.config.manual_open_threshold:
-                        LOGGER.debug(
-                            "Cover %s position at %d%% (< threshold %d%%), clearing exit-paused",
-                            ctx.config.entity_id,
-                            current_position,
-                            ctx.config.manual_open_threshold,
-                        )
-                        ctx.state.exit_paused = False
-                        return await call_next()
-                except (ValueError, TypeError):
-                    pass
+        current_position = read_position(ctx.hass, ctx.config.entity_id)
+        if current_position is not None and current_position < ctx.config.manual_open_threshold:
+            LOGGER.debug(
+                "Cover %s position at %d%% (< threshold %d%%), clearing exit-paused",
+                ctx.config.entity_id,
+                current_position,
+                ctx.config.manual_open_threshold,
+            )
+            ctx.state.exit_paused = False
+            return await call_next()
 
         LOGGER.debug(
             "Cover %s is in exit-paused state, skipping all tracking",
