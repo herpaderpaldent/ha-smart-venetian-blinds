@@ -76,7 +76,9 @@ else
     log_header "Running tests"
 fi
 echo ""
-pytest "${COVERAGE_ARGS[@]}" "${PYTEST_ARGS[@]}"
+# Guard the expansions: macOS ships Bash 3.2, where `set -u` treats "${ARR[@]}" on an empty
+# array as an unbound variable. Without this, `script/test` with no arguments aborts.
+pytest ${COVERAGE_ARGS[@]+"${COVERAGE_ARGS[@]}"} ${PYTEST_ARGS[@]+"${PYTEST_ARGS[@]}"}
 
 if [[ ${#COVERAGE_ARGS[@]} -gt 0 ]] && [[ " ${COVERAGE_ARGS[*]} " =~ " --cov-report=html " ]]; then
     echo ""
