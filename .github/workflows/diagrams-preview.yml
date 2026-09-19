@@ -62,6 +62,7 @@ jobs:
         env:
           BRANCH: diagrams-preview/pr-${{ github.event.number }}
           TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
           WORK="$RUNNER_TEMP/diagrams-preview"
@@ -73,7 +74,7 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add .
-          git commit -q -m "diagram preview for PR #${{ github.event.number }} (${GITHUB_SHA::8})"
+          git commit -q -m "diagram preview for PR #${{ github.event.number }} (${HEAD_SHA::8})"
 
           # Single-commit orphan branch, replaced wholesale on every push.
           git push -q --force \
@@ -88,6 +89,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PREVIEW_SHA: ${{ steps.push.outputs.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
           MARKER="<!-- diagrams-preview -->"
@@ -98,7 +100,7 @@ jobs:
             echo "$MARKER"
             echo "### Behavior diagram preview"
             echo
-            echo "Rendered from ${GITHUB_SHA::8} by \`script/visualize\`."
+            echo "Rendered from ${HEAD_SHA::8} by \`script/visualize\`."
             echo "These are a preview only — \`docs/images/\` is untouched by this PR and is"
             echo "regenerated as part of the release process."
             echo
