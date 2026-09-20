@@ -68,6 +68,8 @@ _ha_helpers = types.ModuleType("homeassistant.helpers")
 _ha_cv = types.ModuleType("homeassistant.helpers.config_validation")
 _ha_coordinator = types.ModuleType("homeassistant.helpers.update_coordinator")
 _ha_coordinator.DataUpdateCoordinator = object  # type: ignore[attr-defined]
+_ha_storage = types.ModuleType("homeassistant.helpers.storage")
+_ha_storage.Store = object  # type: ignore[attr-defined]
 _ha_loader = types.ModuleType("homeassistant.loader")
 _ha_loader.async_get_loaded_integration = None  # type: ignore[attr-defined]
 _ha_util = types.ModuleType("homeassistant.util")
@@ -85,6 +87,7 @@ for _name, _stub in {
     "homeassistant.components.cover": _ha_cover,
     "homeassistant.helpers": _ha_helpers,
     "homeassistant.helpers.config_validation": _ha_cv,
+    "homeassistant.helpers.storage": _ha_storage,
     "homeassistant.helpers.update_coordinator": _ha_coordinator,
     "homeassistant.loader": _ha_loader,
     "homeassistant.util": _ha_util,
