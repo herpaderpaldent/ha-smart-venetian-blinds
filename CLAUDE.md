@@ -72,9 +72,10 @@ one wrong dropdown away.
 **4. Nothing.** `release-tag.yml` fires on the `manifest.json` change, creates the
 tag (no `v` prefix — ever) and publishes a GitHub Release with generated notes.
 
-**Never use `script/release`.** It predates the automation and commits
-`chore: bump version to X.Y.Z`, which does not match the pattern in step 3. You get
-a tag but no GitHub Release.
+**There is no local release script.** `script/release` was deleted: it predated the
+automation and committed `chore: bump version to X.Y.Z`, missing the pattern in step
+3, so it produced a tag with no GitHub Release. Tag by hand and you get the same
+result — go through the workflow.
 
 **Diagrams are CI's job now.** `release-prepare.yml` regenerates them as part of the
 release PR, so there is no pre-tag step to remember. `diagrams-preview.yml` renders

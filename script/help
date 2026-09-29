@@ -2,7 +2,7 @@
 
 # script/help: Display information about available scripts
 #
-# Shows all available scripts grouped by category (development, release, setup)
+# Shows all available scripts grouped by category (development, setup)
 # with descriptions extracted from script headers.
 #
 # Usage:
@@ -57,12 +57,6 @@ show_scripts() {
 
 printf "%bDevelopment scripts (daily use):%b\n\n" "$BOLD" "$NC"
 show_scripts "script" "script/"
-
-if [[ -d script/release ]]; then
-    echo ""
-    printf "%bRelease management:%b\n\n" "$BOLD" "$NC"
-    show_scripts "script/release" "script/release/"
-fi
 
 if [[ -d script/setup ]]; then
     echo ""
