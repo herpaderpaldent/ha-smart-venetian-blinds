@@ -33,7 +33,8 @@ jobs:
           MANIFEST_VERSION="${{ steps.manifest.outputs.version }}"
           if [[ "$TAG" != "$MANIFEST_VERSION" ]]; then
             echo "::error::Tag '$TAG' does not match manifest.json version '$MANIFEST_VERSION'."
-            echo "::error::Use script/release to bump the version and create the tag atomically."
+            echo "::error::Do not tag by hand. Run Actions -> 'Prepare release' and merge the PR it opens;"
+            echo "::error::the 'Tag and release' workflow then creates the tag from manifest.json."
             exit 1
           fi
           echo "Tag '$TAG' matches manifest.json version '$MANIFEST_VERSION'. ✓"
