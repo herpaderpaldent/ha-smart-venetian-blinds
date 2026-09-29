@@ -50,27 +50,39 @@ names the process holding the port. Stop that instance first.
 
 ## Release Process
 
-Before creating a version tag, always follow these steps in order:
+Releases are automated end to end. Do not bump the version, regenerate diagrams,
+or create tags by hand.
 
-```bash
-# 1. Ensure all tests and checks pass
-script/check
-script/test
+**1. Pick the version number.** A `feat:` commit on main since the last tag means a
+minor bump (0.7.7 → 0.8.0); only fixes and refactors means a patch bump. Nothing
+verifies this — `release-prepare` validates the `X.Y.Z` format and nothing else, so
+the choice is entirely yours at the prompt.
 
-# 2. Regenerate behavior diagrams (matplotlib SVGs are non-deterministic)
-#    and commit any changes BEFORE tagging
-python3 script/visualize
-git add docs/images/
-git diff --cached --quiet || git commit -m "chore: regenerate behavior diagrams"
+**2. Actions → "Prepare release" → Run workflow**, and enter the version.
+`release-prepare.yml` bumps `manifest.json`, regenerates the behavior diagrams, and
+opens a `chore/release-<version>` PR with both changes. Normal CI runs on it.
 
-# 3. Bump version in manifest.json, commit, push, open PR, merge
+**3. Squash or rebase merge that PR — never "Create a merge commit."**
+`release-tag.yml` reads `git log -1 --pretty=%s` on main and requires it to match
+`chore: release X.Y.Z`. A merge commit reads `Merge pull request #N from …`, which
+fails that check, so the tag and the GitHub Release are skipped **silently** — the
+workflow reports success. Merge commits are still enabled on this repo, so this is
+one wrong dropdown away.
 
-# 4. Tag (no v prefix — ever)
-git tag 0.7.2
-git push origin 0.7.2
-```
+**4. Nothing.** `release-tag.yml` fires on the `manifest.json` change, creates the
+tag (no `v` prefix — ever) and publishes a GitHub Release with generated notes.
 
-**Why visualize before tagging?** The `update-diagrams` GitHub Actions workflow is `workflow_dispatch` only (not auto-triggered). Auto-triggering on push to main created bot PRs that GitHub blocks from running CI, causing stuck PRs that can never auto-merge. Run `script/visualize` locally instead.
+**Never use `script/release`.** It predates the automation and commits
+`chore: bump version to X.Y.Z`, which does not match the pattern in step 3. You get
+a tag but no GitHub Release.
+
+**Diagrams are CI's job now.** `release-prepare.yml` regenerates them as part of the
+release PR, so there is no pre-tag step to remember. `diagrams-preview.yml` renders
+them on every PR touching the integration and posts them as a preview comment, so a
+broken import in `script/visualize` fails a check instead of surfacing at release
+time. Run `script/visualize` locally only to spot-check your own changes; do not
+commit its output. `update-diagrams.yml` predates all of this, is `workflow_dispatch`
+only, and is now redundant with the release flow.
 
 ## Architecture
 
